@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: dim_users
+    description: "Customer dimension with comprehensive behavioral and demographic attributes"
+    columns:
+      - name: user_id
+        description: "Unique customer identifier"
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: "Customer email address"
+        tests:
+          - unique
+      - name: lifetime_value
+        description: "Total customer spending"
+        tests:
+          - not_null
+
+  - name: dim_products
+    description: "Product dimension with sales performance metrics"
+    columns:
+      - name: product_id
+        description: "Unique product identifier" 
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Product name"
+        tests:
+          - not_null
+
+  - name: fct_orders
+    description: "Order fact table with comprehensive metrics"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        description: "Customer reference"
+        tests:
+          - not_null
+          - relationships:
+              arguments:  # Fixed: added arguments wrapper
+                to: ref('dim_users')
+                field: user_id

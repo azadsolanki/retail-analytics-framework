@@ -1,0 +1,80 @@
+version: 2
+
+sources:
+  - name: thelook_ecommerce
+    description: "TheLook E-commerce public dataset - comprehensive retail data"
+    database: bigquery-public-data
+    schema: thelook_ecommerce
+    
+    # Fixed freshness configuration
+    freshness:
+      warn_after: {count: 1, period: day}
+      error_after: {count: 7, period: day}
+    
+    tables:
+      - name: users
+        description: "Customer master data including demographics and registration info"
+        columns:
+          - name: id
+            description: "Unique user identifier"
+            tests:
+              - unique
+              - not_null
+          - name: email
+            description: "User email address"
+            tests:
+              - unique
+              - not_null
+          - name: created_at
+            description: "User registration timestamp"
+            tests:
+              - not_null
+              
+      - name: orders
+        description: "Order transactions with status and timing"
+        columns:
+          - name: order_id
+            description: "Unique order identifier"
+            tests:
+              - unique
+              - not_null
+          - name: user_id
+            description: "Customer who placed the order"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('thelook_ecommerce', 'users')
+                    field: id
+                    
+      - name: order_items
+        description: "Individual line items within orders"
+        columns:
+          - name: id
+            description: "Unique order item identifier"
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: "Parent order reference"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('thelook_ecommerce', 'orders')
+                    field: order_id
+                  
+      - name: products
+        description: "Product catalog with pricing and categorization"
+        columns:
+          - name: id
+            description: "Unique product identifier"
+            tests:
+              - unique
+              - not_null
+              
+      - name: inventory_items
+        description: "Individual inventory item tracking"
+        
+      - name: events
+        description: "User behavior and interaction events"

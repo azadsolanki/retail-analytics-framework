@@ -1,0 +1,12 @@
+category_id,category_name,parent_category
+CAT001,Apparel,
+CAT002,Footwear,
+CAT003,Accessories,
+CAT004,Home & Decor,
+CAT005,Sports & Outdoors,
+CAT006,Electronics,
+CAT007,Beauty & Personal Care,
+CAT008,Mens Clothing,CAT001
+CAT009,Womens Clothing,CAT001
+CAT010,Athletic Shoes,CAT002
+CAT011,Jewelry,CAT003

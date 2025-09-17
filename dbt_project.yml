@@ -1,0 +1,101 @@
+
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'digital_marketing'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'thelook_analytics'
+
+# These configurations specify where dbt should look for different types of files.
+# The `model-paths` config, for example, states that models in this project can be
+# found in the "models/" directory. You probably won't need to change these!
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+# In this example config, we tell dbt to build all models in the example/ directory
+# as tables. These settings can be overridden in the individual model files
+# using the `{{ config(...) }}` macro.
+
+models:
+  thelook_analytics:
+    staging:
+      +materialized: view
+      +tags: ["staging"]
+    intermediate:
+      +materialized: ephemeral
+      +tags: ["intermediate"]
+    marts:
+      core:
+        +materialized: table
+        +tags: ["marts", "core"]
+      finance:
+        +materialized: table
+        +tags: ["marts", "finance"]
+      marketing:
+        +materialized: table
+        +tags: ["marts", "marketing"]
+    reports:
+      +materialized: table
+      +tags: ["reports"]
+
+snapshots:
+  thelook_analytics:
+    +target_schema: snapshots
+    +strategy: check
+    +check_cols: all
+
+vars:
+  # Date boundaries
+  start_date: '2019-01-01'
+  end_date: '2024-12-31'
+  
+  # Business thresholds
+  vip_threshold: 1000
+  active_days: 90
+  high_value_order: 200
+  
+  # Development settings
+  dev:
+    limit_data: true
+    max_records: 50000
+    
+  # Testing thresholds
+  revenue_tolerance: 0.01
+  freshness_hours: 24
+
+seeds:
+  thelook_analytics:
+    product_categories:
+      +column_types:
+        category_id: string
+        category_name: string
+        parent_category: string
+    customer_segments:
+      +column_types:
+        segment_id: string
+        segment_name: string
+        min_orders: int64
+        min_value: float64
+
+on-run-start:
+  - "{{ log('=== DBT Run Started at: ' ~ run_started_at.strftime('%Y-%m-%d %H:%M:%S') ~ ' ===', info=True) }}"
+  - "select 1" # Dummy query to test connection
+
+on-run-end:
+  - "{{ log('=== DBT Run Completed Successfully ===', info=True) }}"

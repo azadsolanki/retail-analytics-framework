@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_users
+    description: "User staging model"
+    columns:
+      - name: user_id
+        description: "Unique customer identifier"
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: "Customer email"
+        tests:
+          - not_null
+      - name: age
+        description: "Customer age"
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 13
+                max_value: 120
+
+  - name: stg_orders
+    description: "Cleaned order header data with calculated fields"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - unique
+          - not_null
+      - name: user_id  # Make sure this matches your model
+        description: "Customer reference"
+        tests:
+          - not_null
+          - relationships:
+              arguments:  # Updated syntax
+                to: ref('stg_users')
+                field: user_id
+      - name: order_date
+        description: "Order placement timestamp"
+        tests:
+          - not_null
+
+  - name: stg_order_items
+    description: "Order line items with product references"
+    columns:
+      - name: order_item_id
+        description: "Unique line item identifier"
+        tests:
+          - unique
+          - not_null
+      - name: sale_price
+        description: "Item sale price"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:  # Updated syntax
+                min_value: 0
+                max_value: 10000
+
+  - name: stg_products
+    description: "Product catalog with calculated margins"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - unique
+          - not_null
