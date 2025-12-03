@@ -1,60 +1,169 @@
 # =========================================================
 # dbt CI Workflow
 # =========================================================
-# File location: .github/workflows/dbt-ci.yml
+# 
+# WHAT IS THIS FILE?
+# This is a GitHub Actions workflow file. GitHub automatically
+# looks for YAML files in .github/workflows/ and runs them
+# based on the triggers you define.
+#
+# FILE LOCATION: .github/workflows/dbt-ci.yml
+#
 # =========================================================
 
+# ---------------------------------------------------------
+# NAME
+# ---------------------------------------------------------
+# This appears in the GitHub Actions UI. Pick something
+# descriptive so you can identify this workflow easily.
 name: dbt CI
 
 # ---------------------------------------------------------
-# WHEN: Triggers
+# TRIGGERS (on:)
 # ---------------------------------------------------------
-# This workflow runs on every push to ANY branch
+# "on:" defines WHEN this workflow runs.
+# 
+# Common triggers:
+#   push:           - When code is pushed
+#   pull_request:   - When a PR is opened/updated
+#   schedule:       - On a cron schedule
+#   workflow_dispatch: - Manual trigger via UI
+#
+# Current setting: Run on every push to ANY branch
+# This means every commit you push will trigger this workflow.
 on:
   push:
 
 # ---------------------------------------------------------
-# WHAT: Jobs
+# JOBS
 # ---------------------------------------------------------
+# Jobs are independent units of work that run on separate
+# virtual machines (called "runners").
+#
+# Key concepts:
+#   - Each job gets a fresh, clean environment
+#   - Jobs run in PARALLEL by default
+#   - You can make jobs sequential using "needs:"
+#   - Each job has multiple "steps" that run sequentially
+#
 jobs:
+  # -------------------------------------------------------
+  # JOB: compile
+  # -------------------------------------------------------
+  # This job compiles the dbt project to validate SQL syntax.
+  # "compile" is the job ID (used internally by GitHub).
   compile:
+    # Human-readable name shown in GitHub UI
     name: Compile dbt Project
     
-    # Run on Ubuntu (free GitHub-hosted runner)
+    # -------------------------------------------------------
+    # RUNNER
+    # -------------------------------------------------------
+    # "runs-on" specifies which virtual machine to use.
+    # GitHub provides free hosted runners:
+    #   - ubuntu-latest  (Linux - most common)
+    #   - windows-latest (Windows)
+    #   - macos-latest   (macOS)
+    #
+    # ubuntu-latest is fastest and cheapest for most tasks.
     runs-on: ubuntu-latest
     
+    # -------------------------------------------------------
+    # STEPS
+    # -------------------------------------------------------
+    # Steps run SEQUENTIALLY within a job.
+    # Each step can either:
+    #   - "uses:" - Run a pre-built action from GitHub Marketplace
+    #   - "run:"  - Execute shell commands
+    #
+    # Steps share the same filesystem, so files created in
+    # one step are available in later steps.
     steps:
       # -------------------------------------------------------
-      # Step 1: Get the code
+      # STEP 1: Checkout Code
       # -------------------------------------------------------
-      # This downloads your repository to the runner
+      # This step downloads your repository code to the runner.
+      # Without this, the runner has no access to your code!
+      #
+      # "uses: actions/checkout@v4" means:
+      #   - "actions" = GitHub's official actions organization
+      #   - "checkout" = The action name
+      #   - "@v4" = Version 4 of this action
+      #
+      # This is the most common first step in any workflow.
       - name: Checkout code
         uses: actions/checkout@v4
       
       # -------------------------------------------------------
-      # Step 2: Setup Python
+      # STEP 2: Setup Python
       # -------------------------------------------------------
-      # dbt is a Python package, so we need Python installed
+      # dbt is a Python package, so we need Python installed.
+      # GitHub runners have Python pre-installed, but this
+      # action lets us specify the exact version we want.
+      #
+      # "with:" passes configuration to the action:
+      #   - python-version: Which Python version to install
+      #   - cache: 'pip' caches downloaded packages for speed
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       
       # -------------------------------------------------------
-      # Step 3: Install dbt
+      # STEP 3: Install Python Dependencies
       # -------------------------------------------------------
-      # Install dbt and other Python dependencies
+      # "run:" executes shell commands directly.
+      # The "|" allows multiple lines of commands.
+      #
+      # This reads requirements.txt and installs all packages,
+      # including dbt-bigquery.
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
       
       # -------------------------------------------------------
-      # Step 4: Create profiles.yml
+      # STEP 4: Authenticate to Google Cloud
       # -------------------------------------------------------
-      # This is the KEY difference from local development
-      # Instead of a keyfile PATH, we use keyfile JSON directly
+      # YOUR LOCAL SETUP:
+      #   keyfile: /Users/azadsolanki/Documents/security/credentials.json
+      #   (A file path on YOUR computer)
+      #
+      # THE PROBLEM:
+      #   GitHub runners don't have your local files!
+      #
+      # THE SOLUTION:
+      #   1. Store the JSON content as a GitHub Secret
+      #   2. Write it to a temporary file on the runner
+      #   3. Point dbt to that file
+      #
+      # "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" reads the secret
+      # you added in GitHub Settings → Secrets → Actions.
+      #
+      # The quotes around the echo are important! They preserve
+      # the JSON structure including newlines.
+      - name: Authenticate to GCP
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
+      
+      # -------------------------------------------------------
+      # STEP 5: Create profiles.yml
+      # -------------------------------------------------------
+      # dbt needs profiles.yml to know how to connect to your
+      # data warehouse. Locally, this is in ~/.dbt/profiles.yml
+      #
+      # In CI, we create it dynamically in the repo root.
+      #
+      # KEY DIFFERENCES FROM YOUR LOCAL profiles.yml:
+      #   - target: "ci" (not "dev")
+      #   - dataset: "dbt_ci" (separate from dev/staging/prod)
+      #   - keyfile: points to the temp file we created above
+      #
+      # "cat << 'EOF'" is a "heredoc" - it creates a multi-line
+      # file. Everything between << 'EOF' and EOF becomes the file.
+      # The quotes around 'EOF' prevent variable substitution.
       - name: Create profiles.yml
-        env:
-          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: |
           cat << 'EOF' > profiles.yml
           thelook_analytics:
@@ -68,22 +177,54 @@ jobs:
                 threads: 4
                 timeout_seconds: 300
                 location: US
-                keyfile_json: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
+                keyfile: /tmp/gcp-key.json
           EOF
       
       # -------------------------------------------------------
-      # Step 5: Install dbt packages
+      # STEP 6: Install dbt Packages
       # -------------------------------------------------------
-      # Installs packages from packages.yml (like dbt_utils)
+      # "dbt deps" reads packages.yml and installs dependencies
+      # like dbt_utils, dbt_expectations, etc.
+      #
+      # This is equivalent to "npm install" for Node.js or
+      # "pip install" for Python.
       - name: Install dbt packages
         run: dbt deps
       
       # -------------------------------------------------------
-      # Step 6: Compile
+      # STEP 7: Verify Connection
       # -------------------------------------------------------
-      # This validates all SQL without running anything
-      # If there's a syntax error, this step fails
+      # "dbt debug" tests the connection to BigQuery and shows:
+      #   - dbt version
+      #   - Python version
+      #   - Installed adapters
+      #   - profiles.yml configuration
+      #   - Connection status
+      #
+      # This step is optional but VERY helpful for debugging.
+      # If there's an auth problem, this will show clear errors.
+      - name: Verify dbt connection
+        run: dbt debug
+      
+      # -------------------------------------------------------
+      # STEP 8: Compile dbt Project
+      # -------------------------------------------------------
+      # "dbt compile" does the following:
+      #   - Parses all your SQL files
+      #   - Resolves {{ ref() }} and {{ source() }} references
+      #   - Processes Jinja templates
+      #   - Generates compiled SQL in target/compiled/
+      #
+      # IMPORTANT: This does NOT run any queries!
+      # It only validates that your SQL is syntactically correct.
+      #
+      # WHY START WITH COMPILE?
+      #   - Zero BigQuery costs (no queries run)
+      #   - Fast (~30 seconds)
+      #   - Catches most common errors:
+      #       - Typos in model names
+      #       - Invalid Jinja syntax
+      #       - Missing refs
+      #       - SQL syntax errors
       - name: Compile dbt project
-        env:
-          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: dbt compile
