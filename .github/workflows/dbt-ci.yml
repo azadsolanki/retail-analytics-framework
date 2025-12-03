@@ -1,0 +1,89 @@
+# =========================================================
+# dbt CI Workflow
+# =========================================================
+# File location: .github/workflows/dbt-ci.yml
+# =========================================================
+
+name: dbt CI
+
+# ---------------------------------------------------------
+# WHEN: Triggers
+# ---------------------------------------------------------
+# This workflow runs on every push to ANY branch
+on:
+  push:
+
+# ---------------------------------------------------------
+# WHAT: Jobs
+# ---------------------------------------------------------
+jobs:
+  compile:
+    name: Compile dbt Project
+    
+    # Run on Ubuntu (free GitHub-hosted runner)
+    runs-on: ubuntu-latest
+    
+    steps:
+      # -------------------------------------------------------
+      # Step 1: Get the code
+      # -------------------------------------------------------
+      # This downloads your repository to the runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # -------------------------------------------------------
+      # Step 2: Setup Python
+      # -------------------------------------------------------
+      # dbt is a Python package, so we need Python installed
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # -------------------------------------------------------
+      # Step 3: Install dbt
+      # -------------------------------------------------------
+      # Install dbt and other Python dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      # -------------------------------------------------------
+      # Step 4: Create profiles.yml
+      # -------------------------------------------------------
+      # This is the KEY difference from local development
+      # Instead of a keyfile PATH, we use keyfile JSON directly
+      - name: Create profiles.yml
+        env:
+          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        run: |
+          cat << 'EOF' > profiles.yml
+          thelook_analytics:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account
+                project: data-products-441119
+                dataset: dbt_ci
+                threads: 4
+                timeout_seconds: 300
+                location: US
+                keyfile_json: "{{ env_var('GCP_SERVICE_ACCOUNT_KEY') }}"
+          EOF
+      
+      # -------------------------------------------------------
+      # Step 5: Install dbt packages
+      # -------------------------------------------------------
+      # Installs packages from packages.yml (like dbt_utils)
+      - name: Install dbt packages
+        run: dbt deps
+      
+      # -------------------------------------------------------
+      # Step 6: Compile
+      # -------------------------------------------------------
+      # This validates all SQL without running anything
+      # If there's a syntax error, this step fails
+      - name: Compile dbt project
+        env:
+          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        run: dbt compile
