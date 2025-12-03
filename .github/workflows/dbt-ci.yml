@@ -1,7 +1,7 @@
 # =========================================================
 # dbt CI Workflow
 # =========================================================
-# 
+#
 # WHAT IS THIS FILE?
 # This is a GitHub Actions workflow file. GitHub automatically
 # looks for YAML files in .github/workflows/ and runs them
@@ -22,7 +22,7 @@ name: dbt CI
 # TRIGGERS (on:)
 # ---------------------------------------------------------
 # "on:" defines WHEN this workflow runs.
-# 
+#
 # Common triggers:
 #   push:           - When code is pushed
 #   pull_request:   - When a PR is opened/updated
@@ -55,7 +55,7 @@ jobs:
   compile:
     # Human-readable name shown in GitHub UI
     name: Compile dbt Project
-    
+
     # -------------------------------------------------------
     # RUNNER
     # -------------------------------------------------------
@@ -67,7 +67,7 @@ jobs:
     #
     # ubuntu-latest is fastest and cheapest for most tasks.
     runs-on: ubuntu-latest
-    
+
     # -------------------------------------------------------
     # STEPS
     # -------------------------------------------------------
@@ -93,7 +93,7 @@ jobs:
       # This is the most common first step in any workflow.
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       # -------------------------------------------------------
       # STEP 2: Setup Python
       # -------------------------------------------------------
@@ -107,9 +107,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-      
+          python-version: "3.11"
+          cache: "pip"
+
       # -------------------------------------------------------
       # STEP 3: Install Python Dependencies
       # -------------------------------------------------------
@@ -122,7 +122,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       # -------------------------------------------------------
       # STEP 4: Authenticate to Google Cloud
       # -------------------------------------------------------
@@ -146,7 +146,7 @@ jobs:
       - name: Authenticate to GCP
         run: |
           echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-      
+
       # -------------------------------------------------------
       # STEP 5: Create profiles.yml
       # -------------------------------------------------------
@@ -179,7 +179,7 @@ jobs:
                 location: US
                 keyfile: /tmp/gcp-key.json
           EOF
-      
+
       # -------------------------------------------------------
       # STEP 6: Install dbt Packages
       # -------------------------------------------------------
@@ -190,7 +190,7 @@ jobs:
       # "pip install" for Python.
       - name: Install dbt packages
         run: dbt deps
-      
+
       # -------------------------------------------------------
       # STEP 7: Verify Connection
       # -------------------------------------------------------
@@ -205,7 +205,7 @@ jobs:
       # If there's an auth problem, this will show clear errors.
       - name: Verify dbt connection
         run: dbt debug
-      
+
       # -------------------------------------------------------
       # STEP 8: Compile dbt Project
       # -------------------------------------------------------
@@ -228,3 +228,27 @@ jobs:
       #       - SQL syntax errors
       - name: Compile dbt project
         run: dbt compile
+
+      # -------------------------------------------------------
+      # STEP 9: Build dbt Project
+      # -------------------------------------------------------
+      # "dbt build" is the main command that:
+      #   1. Runs all models (creates tables/views in BigQuery)
+      #   2. Runs all tests after each model
+      #   3. Runs snapshots
+      #   4. Runs seeds
+      #
+      # It's equivalent to running:
+      #   dbt seed + dbt run + dbt test + dbt snapshot
+      # But smarter - it runs tests RIGHT AFTER each model,
+      # so you catch failures early.
+      #
+      # WHAT HAPPENS IN BIGQUERY:
+      #   - Creates dataset "dbt_ci" (if it doesn't exist)
+      #   - Creates tables/views for each model
+      #   - Runs test queries to validate data
+      #
+      # NOTE: This step costs money (BigQuery queries).
+      # For your project size, it should be minimal.
+      - name: Build dbt project
+        run: dbt build
