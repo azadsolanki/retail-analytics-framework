@@ -1,0 +1,92 @@
+# =========================================
+# DBT-specific
+# =========================================
+target/
+dbt_packages/
+logs/
+dbt_modules/
+.dbt/
+
+# Local profiles (contains credentials)
+profiles.yml
+
+# =========================================
+# Credentials & Secrets
+# =========================================
+# GCP credentials
+*.json
+!dbt_project.json
+!packages.json
+!package-lock.json
+credentials.json
+gcp-*.json
+service-account*.json
+
+# Environment files
+.env
+.env.*
+.envrc
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+
+# =========================================
+# Python
+# =========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# =========================================
+# OS Files
+# =========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# =========================================
+# Temp & Cache
+# =========================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+
+# =========================================
+# Documentation
+# =========================================
+# Generated docs (regenerate with dbt docs generate)
+# Uncomment if you don't want to commit generated docs
+# target/index.html
+# target/manifest.json
+# target/catalog.json
