@@ -1,0 +1,2 @@
+# dbt Core with BigQuery adapter
+dbt-bigquery==1.9.0
