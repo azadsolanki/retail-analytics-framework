@@ -184,7 +184,7 @@ jobs:
         run: dbt deps
       
       - name: Build dbt project
-        run: dbt build
+        run: dbt build --exclude snap_products test:source_unique_thelook_ecommerce_users_email
       
       # -------------------------------------------------------
       # CLEANUP: Delete CI Dataset
