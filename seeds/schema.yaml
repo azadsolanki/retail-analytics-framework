@@ -1,0 +1,7 @@
+version: 2
+
+seeds:
+  - name: customer_segments
+    config:
+      column_types:
+        min_value: NUMERIC
