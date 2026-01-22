@@ -1,42 +1,67 @@
 # =========================================================
-# Multiple Jobs (with Security Best Practices)
+# PR-Specific CI with Ephemeral Datasets
 # =========================================================
 #
 # KEY CONCEPTS:
-#   1. Jobs run on SEPARATE machines (no shared files)
-#   2. Jobs run in PARALLEL by default
-#   3. Use "needs:" to make jobs run sequentially
-#   4. Secure handling of secrets
-#
-# SECURITY NOTES:
-#   - GitHub automatically masks secrets in logs (shows ***)
-#   - We use google-github-actions/auth for proper GCP auth
-#   - Keyfiles have restrictive permissions (chmod 600)
-#   - Never use 'echo' with secrets (use printf instead)
+#   1. Different triggers for different scenarios
+#   2. Dynamic dataset names based on PR number
+#   3. Conditional logic with "if:"
+#   4. Automatic cleanup of CI datasets
+#   5. GitHub context variables
 #
 # =========================================================
 
 name: dbt CI
 
+# ---------------------------------------------------------
+# TRIGGERS - More Specific Now
+# ---------------------------------------------------------
+# We now distinguish between:
+#   - push: Code pushed to any branch
+#   - pull_request: PR opened, updated, or synchronized
+#
+# Why both?
+#   - push: Quick feedback while developing
+#   - pull_request: Full CI before merging
+# ---------------------------------------------------------
 on:
   push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
 
 # ---------------------------------------------------------
 # ENVIRONMENT VARIABLES
 # ---------------------------------------------------------
-# Variables defined here are available to ALL jobs.
-# NOTE: Never put secrets here! Use ${{ secrets.XXX }} instead.
 env:
   DBT_PROJECT: data-products-441119
-  DBT_DATASET: dbt_ci
   DBT_PROFILE: thelook_analytics
+  
+  # -------------------------------------------------------
+  # DYNAMIC DATASET NAME
+  # -------------------------------------------------------
+  # We create unique dataset names to avoid collisions.
+  #
+  # GitHub Context Variables:
+  #   ${{ github.event_name }}     - "push" or "pull_request"
+  #   ${{ github.run_id }}         - Unique ID: 12345678
+  #   ${{ github.event.pull_request.number }} - PR number: 42
+  #   ${{ github.ref_name }}       - Branch name: feature/xyz
+  #
+  # For PRs:    dbt_ci_pr_42
+  # For pushes: dbt_ci_run_12345678
+  # -------------------------------------------------------
+  DBT_DATASET: ${{ github.event_name == 'pull_request' && format('dbt_ci_pr_{0}', github.event.pull_request.number) || format('dbt_ci_run_{0}', github.run_id) }}
 
 jobs:
   # =========================================================
   # JOB 1: COMPILE
   # =========================================================
   compile:
-    name: Compile
+    name: 🔍 Compile
     runs-on: ubuntu-latest
     
     steps:
@@ -54,27 +79,11 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
       
-      # -------------------------------------------------------
-      # AUTHENTICATION - SECURITY BEST PRACTICES
-      # -------------------------------------------------------
-      # Step 1: Use Google's official auth action
-      # This sets up Application Default Credentials (ADC)
-      # and is the recommended way to authenticate.
-      # -------------------------------------------------------
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       
-      # -------------------------------------------------------
-      # Step 2: Write keyfile for dbt
-      # -------------------------------------------------------
-      # dbt-bigquery needs a keyfile path in profiles.yml
-      # Security measures:
-      #   - printf instead of echo (doesn't add newline)
-      #   - chmod 600 (only owner can read/write)
-      #   - GitHub masks the secret value in logs
-      # -------------------------------------------------------
       - name: Create keyfile for dbt
         run: |
           printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
@@ -96,6 +105,21 @@ jobs:
                 location: US
                 keyfile: /tmp/gcp-key.json
           EOF
+      
+      # -------------------------------------------------------
+      # DEBUGGING: Show which dataset we're using
+      # -------------------------------------------------------
+      # This helps you understand what's happening.
+      # In production, you might remove this step.
+      # -------------------------------------------------------
+      - name: Show CI configuration
+        run: |
+          echo "Event type: ${{ github.event_name }}"
+          echo "Dataset: ${{ env.DBT_DATASET }}"
+          echo "Branch: ${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "PR Number: ${{ github.event.pull_request.number }}"
+          fi
       
       - name: Install dbt packages
         run: dbt deps
@@ -131,6 +155,9 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+      
       - name: Create keyfile for dbt
         run: |
           printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
@@ -158,14 +185,49 @@ jobs:
       
       - name: Build dbt project
         run: dbt build
+      
+      # -------------------------------------------------------
+      # CLEANUP: Delete CI Dataset
+      # -------------------------------------------------------
+      # After the build completes (pass or fail), we delete
+      # the CI dataset to avoid clutter in BigQuery.
+      #
+      # "if: always()" means this step runs even if build fails.
+      #
+      # "bq rm -r -f" flags:
+      #   -r = recursive (delete all tables in dataset)
+      #   -f = force (don't prompt for confirmation)
+      #
+      # "|| true" prevents the step from failing if dataset
+      # doesn't exist (e.g., if build failed before creating it)
+      # -------------------------------------------------------
+      - name: Cleanup CI dataset
+        if: always()
+        run: |
+          echo "Cleaning up dataset: ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }}"
+          bq rm -r -f ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }} || true
 
   # =========================================================
-  # JOB 3: GENERATE DOCS
+  # JOB 3: DOCS (Only on Pull Requests)
+  # =========================================================
+  # We only generate docs for PRs, not for every push.
+  # This saves time and resources.
   # =========================================================
   docs:
     name: 📚 Generate Docs
     runs-on: ubuntu-latest
     needs: compile
+    
+    # -------------------------------------------------------
+    # CONDITIONAL EXECUTION
+    # -------------------------------------------------------
+    # "if:" controls whether this job runs at all.
+    #
+    # This job ONLY runs for pull requests, not regular pushes.
+    # Why? Docs generation is slower and we mainly need it
+    # for PR reviews.
+    # -------------------------------------------------------
+    if: github.event_name == 'pull_request'
     
     steps:
       - name: Checkout code
