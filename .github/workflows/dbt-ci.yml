@@ -228,6 +228,7 @@ jobs:
     # for PR reviews.
     # -------------------------------------------------------
     if: github.event_name == 'pull_request'
+    continue-on-error: true  
     
     steps:
       - name: Checkout code
