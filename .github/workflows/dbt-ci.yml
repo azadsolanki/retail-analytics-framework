@@ -208,7 +208,81 @@ jobs:
           bq rm -r -f ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }} || true
 
   # =========================================================
-  # JOB 3: DOCS (Only on Pull Requests)
+  # JOB 3: ERD Creation 
+  # =========================================================
+  erd:
+    name: 📊 Generate ERD
+    runs-on: ubuntu-latest
+    needs: compile
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      
+      - name: Create keyfile for dbt
+        run: |
+          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
+          chmod 600 /tmp/gcp-key.json
+      
+      - name: Create profiles.yml
+        run: |
+          cat << EOF > profiles.yml
+          ${{ env.DBT_PROFILE }}:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account
+                project: ${{ env.DBT_PROJECT }}
+                dataset: ${{ env.DBT_DATASET }}
+                threads: 4
+                timeout_seconds: 300
+                location: US
+                keyfile: /tmp/gcp-key.json
+          EOF
+      
+      - name: Install dbt packages
+        run: dbt deps
+      
+      - name: Generate dbt docs
+        run: dbt docs generate
+      
+      - name: Install dbterd
+        run: pip install dbterd
+
+      - name: Generate ERD
+        run: |
+          mkdir -p docs
+          dbterd run -ad target -o docs -t mermaid
+          mv docs/output.md docs/erd.md
+
+      - name: Commit ERD to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/erd.md
+          git commit -m "Update ERD diagram" || echo "No changes to commit"
+          git push
+  
+  # =========================================================
+  # JOB 4: DOCS (Only on Pull Requests)
   # =========================================================
   # We only generate docs for PRs, not for every push.
   # This saves time and resources.
