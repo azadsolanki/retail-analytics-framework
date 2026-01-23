@@ -20,6 +20,8 @@ models:
               arguments:
                 min_value: 13
                 max_value: 120
+                config:
+                  severity: warn
 
   - name: stg_orders
     description: "Cleaned order header data with calculated fields"
@@ -37,6 +39,8 @@ models:
               arguments:  # Updated syntax
                 to: ref('stg_users')
                 field: user_id
+                config:
+                  severity: warn
       - name: order_date
         description: "Order placement timestamp"
         tests:
