@@ -261,8 +261,8 @@ jobs:
       - name: Install dbt packages
         run: dbt deps
       
-      - name: Generate dbt docs
-        run: dbt docs generate
+      - name: Compile dbt project
+        run: dbt compile
       
       - name: Install dbterd
         run: pip install dbterd
