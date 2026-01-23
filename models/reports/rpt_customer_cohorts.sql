@@ -76,14 +76,14 @@ select
     -- Cohort quality indicators
     case 
         when ct.period_number = 0 then 'Initial'
-        when ct.period_number = 1 and retention_rate >= 30 then 'Strong Month 1'
-        when ct.period_number = 1 and retention_rate >= 20 then 'Good Month 1'
+        when ct.period_number = 1 and (ct.customers * 100.0 / cs.cohort_size) >= 30 then 'Strong Month 1'
+        when ct.period_number = 1 and (ct.customers * 100.0 / cs.cohort_size) >= 20 then 'Good Month 1'
         when ct.period_number = 1 then 'Weak Month 1'
-        when ct.period_number = 6 and retention_rate >= 15 then 'Strong Month 6'
-        when ct.period_number = 6 and retention_rate >= 10 then 'Good Month 6'
+        when ct.period_number = 6 and (ct.customers * 100.0 / cs.cohort_size) >= 15 then 'Strong Month 6'
+        when ct.period_number = 6 and (ct.customers * 100.0 / cs.cohort_size) >= 10 then 'Good Month 6'
         when ct.period_number = 6 then 'Weak Month 6'
-        when ct.period_number = 12 and retention_rate >= 10 then 'Strong Month 12'
-        when ct.period_number = 12 and retention_rate >= 5 then 'Good Month 12'
+        when ct.period_number = 12 and (ct.customers * 100.0 / cs.cohort_size) >= 10 then 'Strong Month 12'
+        when ct.period_number = 12 and (ct.customers * 100.0 / cs.cohort_size) >= 5 then 'Good Month 12'
         when ct.period_number = 12 then 'Weak Month 12'
         else 'Standard'
     end as cohort_quality,
