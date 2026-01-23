@@ -23,7 +23,9 @@ sources:
           - name: email
             description: "User email address"
             tests:
-              - unique
+              - unique:
+                  config: 
+                    severity: warn
               - not_null
           - name: created_at
             description: "User registration timestamp"

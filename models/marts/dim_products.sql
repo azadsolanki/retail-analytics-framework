@@ -1,4 +1,4 @@
-{ config(
+{{ config(
     materialized='table',
     tags=['marts', 'core', 'dimension']
 ) }}

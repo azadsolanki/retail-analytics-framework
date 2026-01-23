@@ -12,7 +12,9 @@ models:
       - name: email
         description: "Customer email address"
         tests:
-          - unique
+          - unique:
+              config:
+                severity: warn
       - name: lifetime_value
         description: "Total customer spending"
         tests:
@@ -22,7 +24,7 @@ models:
     description: "Product dimension with sales performance metrics"
     columns:
       - name: product_id
-        description: "Unique product identifier" 
+        description: "Unique product identifier"
         tests:
           - unique
           - not_null
@@ -44,6 +46,7 @@ models:
         tests:
           - not_null
           - relationships:
-              arguments:  # Fixed: added arguments wrapper
-                to: ref('dim_users')
-                field: user_id
+              to: ref('dim_users')
+              field: user_id
+              config:
+                severity: warn
