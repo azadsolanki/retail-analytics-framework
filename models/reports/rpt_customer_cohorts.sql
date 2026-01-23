@@ -16,7 +16,7 @@ with customer_orders as (
 cohort_data as (
     select
         user_id,
-        min(order_month) as cohort_month,
+        min(order_month) over (partition by user_id) as cohort_month,
         order_month,
         order_total,
         date_diff(order_month, min(order_month) over (partition by user_id), month) as period_number
