@@ -96,7 +96,7 @@ jobs:
         run: dbt compile
 
   # =========================================================
-  # JOB 2: BUILD (No cleanup - ERD job will cleanup for PRs)
+  # JOB 2: BUILD
   # =========================================================
   build:
     name: 🏗️ Build & Test
@@ -163,7 +163,6 @@ jobs:
 
   # =========================================================
   # JOB 3: ERD Generation (Only on Pull Requests)
-  # Runs AFTER build so the dataset exists for catalog generation
   # =========================================================
   erd:
     name: 📊 Generate ERD
@@ -175,6 +174,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -220,7 +222,7 @@ jobs:
       - name: Install dbt packages
         run: dbt deps
       
-      - name: Generate dbt docs (creates manifest and catalog)
+      - name: Generate dbt docs
         run: dbt docs generate
       
       - name: Install dbterd
@@ -238,9 +240,8 @@ jobs:
           git config user.email "github-actions@github.com"
           git add docs/erd.md
           git commit -m "Update ERD diagram [skip ci]" || echo "No changes to commit"
-          git push
+          git push origin ${{ github.head_ref }}
       
-      # ERD job handles cleanup for PR events
       - name: Cleanup CI dataset
         if: always()
         run: |
