@@ -1,29 +1,9 @@
 # =========================================================
 # PR-Specific CI with Ephemeral Datasets
 # =========================================================
-#
-# KEY CONCEPTS:
-#   1. Different triggers for different scenarios
-#   2. Dynamic dataset names based on PR number
-#   3. Conditional logic with "if:"
-#   4. Automatic cleanup of CI datasets
-#   5. GitHub context variables
-#
-# =========================================================
 
 name: dbt CI
 
-# ---------------------------------------------------------
-# TRIGGERS - More Specific Now
-# ---------------------------------------------------------
-# We now distinguish between:
-#   - push: Code pushed to any branch
-#   - pull_request: PR opened, updated, or synchronized
-#
-# Why both?
-#   - push: Quick feedback while developing
-#   - pull_request: Full CI before merging
-# ---------------------------------------------------------
 on:
   push:
     branches:
@@ -34,26 +14,15 @@ on:
       - main
 
 # ---------------------------------------------------------
-# ENVIRONMENT VARIABLES
+# PERMISSIONS
 # ---------------------------------------------------------
+# Required for the ERD job to commit and push to the repo
+permissions:
+  contents: write
+
 env:
   DBT_PROJECT: data-products-441119
   DBT_PROFILE: thelook_analytics
-  
-  # -------------------------------------------------------
-  # DYNAMIC DATASET NAME
-  # -------------------------------------------------------
-  # We create unique dataset names to avoid collisions.
-  #
-  # GitHub Context Variables:
-  #   ${{ github.event_name }}     - "push" or "pull_request"
-  #   ${{ github.run_id }}         - Unique ID: 12345678
-  #   ${{ github.event.pull_request.number }} - PR number: 42
-  #   ${{ github.ref_name }}       - Branch name: feature/xyz
-  #
-  # For PRs:    dbt_ci_pr_42
-  # For pushes: dbt_ci_run_12345678
-  # -------------------------------------------------------
   DBT_DATASET: ${{ github.event_name == 'pull_request' && format('dbt_ci_pr_{0}', github.event.pull_request.number) || format('dbt_ci_run_{0}', github.run_id) }}
 
 jobs:
@@ -106,20 +75,11 @@ jobs:
                 keyfile: /tmp/gcp-key.json
           EOF
       
-      # -------------------------------------------------------
-      # DEBUGGING: Show which dataset we're using
-      # -------------------------------------------------------
-      # This helps you understand what's happening.
-      # In production, you might remove this step.
-      # -------------------------------------------------------
       - name: Show CI configuration
         run: |
           echo "Event type: ${{ github.event_name }}"
           echo "Dataset: ${{ env.DBT_DATASET }}"
           echo "Branch: ${{ github.ref_name }}"
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "PR Number: ${{ github.event.pull_request.number }}"
-          fi
       
       - name: Install dbt packages
         run: dbt deps
@@ -186,21 +146,93 @@ jobs:
       - name: Build dbt project
         run: dbt build --exclude snap_products
       
-      # -------------------------------------------------------
-      # CLEANUP: Delete CI Dataset
-      # -------------------------------------------------------
-      # After the build completes (pass or fail), we delete
-      # the CI dataset to avoid clutter in BigQuery.
-      #
-      # "if: always()" means this step runs even if build fails.
-      #
-      # "bq rm -r -f" flags:
-      #   -r = recursive (delete all tables in dataset)
-      #   -f = force (don't prompt for confirmation)
-      #
-      # "|| true" prevents the step from failing if dataset
-      # doesn't exist (e.g., if build failed before creating it)
-      # -------------------------------------------------------
+      - name: Cleanup CI dataset (push only)
+        if: always() && github.event_name == 'push'
+        run: |
+          echo "Cleaning up dataset: ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }}"
+          bq rm -r -f ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }} || true
+
+  # =========================================================
+  # JOB 3: ERD Generation (Only on Pull Requests)
+  # =========================================================
+  erd:
+    name: 📊 Generate ERD
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Create keyfile for dbt
+        run: |
+          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
+          chmod 600 /tmp/gcp-key.json
+      
+      - name: Create profiles.yml
+        run: |
+          cat << EOF > profiles.yml
+          ${{ env.DBT_PROFILE }}:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account
+                project: ${{ env.DBT_PROJECT }}
+                dataset: ${{ env.DBT_DATASET }}
+                threads: 4
+                timeout_seconds: 300
+                location: US
+                keyfile: /tmp/gcp-key.json
+          EOF
+      
+      - name: Install dbt packages
+        run: dbt deps
+      
+      - name: Generate dbt docs
+        run: dbt docs generate
+      
+      - name: Install dbterd
+        run: pip install dbterd
+
+      - name: Generate ERD
+        run: |
+          mkdir -p docs
+          dbterd run -ad target -o docs -t mermaid
+          mv docs/output.md docs/erd.md
+
+      - name: Commit ERD to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/erd.md
+          git commit -m "Update ERD diagram [skip ci]" || echo "No changes to commit"
+          git push origin ${{ github.head_ref }}
+      
       - name: Cleanup CI dataset
         if: always()
         run: |
@@ -208,27 +240,14 @@ jobs:
           bq rm -r -f ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }} || true
 
   # =========================================================
-  # JOB 3: DOCS (Only on Pull Requests)
-  # =========================================================
-  # We only generate docs for PRs, not for every push.
-  # This saves time and resources.
+  # JOB 4: DOCS (Only on Pull Requests)
   # =========================================================
   docs:
     name: 📚 Generate Docs
     runs-on: ubuntu-latest
-    needs: compile
-    
-    # -------------------------------------------------------
-    # CONDITIONAL EXECUTION
-    # -------------------------------------------------------
-    # "if:" controls whether this job runs at all.
-    #
-    # This job ONLY runs for pull requests, not regular pushes.
-    # Why? Docs generation is slower and we mainly need it
-    # for PR reviews.
-    # -------------------------------------------------------
+    needs: build
     if: github.event_name == 'pull_request'
-    continue-on-error: true  
+    continue-on-error: true
     
     steps:
       - name: Checkout code
