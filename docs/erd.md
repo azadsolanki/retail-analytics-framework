@@ -1,3 +1,8 @@
+# Data Model ERD
+
+Auto-generated from dbt models.
+
+```mermaid
 erDiagram
   "MODEL.DIGITAL_MARKETING.DIM_PRODUCTS" {
     int64 product_id
@@ -1081,3 +1086,4 @@ erDiagram
   }
   "MODEL.DIGITAL_MARKETING.FCT_ORDERS" }|--|| "MODEL.DIGITAL_MARKETING.DIM_USERS": user_id
   "MODEL.DIGITAL_MARKETING.STG_ORDERS" }|--|| "MODEL.DIGITAL_MARKETING.STG_USERS": user_id
+```
