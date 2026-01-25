@@ -1,21 +1,9 @@
 # =========================================================
 # PR-Specific CI with Ephemeral Datasets
 # =========================================================
-#
-# KEY CONCEPTS:
-#   1. Different triggers for different scenarios
-#   2. Dynamic dataset names based on PR number
-#   3. Conditional logic with "if:"
-#   4. Automatic cleanup of CI datasets
-#   5. GitHub context variables
-#
-# =========================================================
 
 name: dbt CI
 
-# ---------------------------------------------------------
-# TRIGGERS
-# ---------------------------------------------------------
 on:
   push:
     branches:
@@ -26,8 +14,12 @@ on:
       - main
 
 # ---------------------------------------------------------
-# ENVIRONMENT VARIABLES
+# PERMISSIONS
 # ---------------------------------------------------------
+# Required for the ERD job to commit and push to the repo
+permissions:
+  contents: write
+
 env:
   DBT_PROJECT: data-products-441119
   DBT_PROFILE: thelook_analytics
@@ -154,7 +146,6 @@ jobs:
       - name: Build dbt project
         run: dbt build --exclude snap_products
       
-      # Cleanup only for push events (ERD job handles cleanup for PRs)
       - name: Cleanup CI dataset (push only)
         if: always() && github.event_name == 'push'
         run: |
