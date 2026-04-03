@@ -5,6 +5,8 @@
 # TEMPORARY: ERD runs on feature branch for testing
 # TODO: Change back to main after testing
 #
+# Use [skip build] in commit message to skip the build job
+#
 # =========================================================
 
 name: dbt CI
@@ -89,12 +91,13 @@ jobs:
         run: dbt compile
 
   # =========================================================
-  # JOB 2: BUILD
+  # JOB 2: BUILD (Skip with [skip build] in commit message)
   # =========================================================
   build:
     name: 🏗️ Build & Test
     runs-on: ubuntu-latest
     needs: compile
+    if: "!contains(github.event.head_commit.message, '[skip build]')"
 
     steps:
       - name: Checkout code
@@ -217,17 +220,19 @@ jobs:
         run: |
           mkdir -p docs
 
-          # Generate ERD with semantic algorithm (infers relationships from column names)
-          # Filter to only marts and reports folders, exclude elementary package
+          # Generate ERD with semantic algorithm
+          # Use -s for each selection, exclude elementary models
           dbterd run -ad target -o docs -t mermaid \
-            --select "fpath:models/marts" "fpath:models/reports" \
-            --exclude "elementary.*" \
+            -s "model.digital_marketing.dim_" \
+            -s "model.digital_marketing.fct_" \
+            -s "model.digital_marketing.rpt_" \
+            --exclude "model.elementary" \
             --algo semantic
 
           # Wrap output in markdown code block for GitHub rendering
           echo '# Data Model ERD' > docs/erd.md
           echo '' >> docs/erd.md
-          echo '> Auto-generated from dbt business layer models (marts + reports)' >> docs/erd.md
+          echo '> Auto-generated from dbt business layer models (dims, facts, reports)' >> docs/erd.md
           echo '> Relationships inferred using semantic matching on column names' >> docs/erd.md
           echo '' >> docs/erd.md
           echo '```mermaid' >> docs/erd.md
