@@ -221,7 +221,7 @@ jobs:
           # Filter to only marts and reports folders, exclude elementary package
           dbterd run -ad target -o docs -t mermaid \
             --select "fpath:models/marts" "fpath:models/reports" \
-            --exclude-model "elementary.*" \
+            --exclude "elementary.*" \
             --algo semantic
 
           # Wrap output in markdown code block for GitHub rendering
