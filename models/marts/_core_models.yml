@@ -1,5 +1,4 @@
 version: 2
-
 models:
   - name: dim_users
     description: "Customer dimension with comprehensive behavioral and demographic attributes"
@@ -50,3 +49,41 @@ models:
               field: user_id
               config:
                 severity: warn
+
+  - name: fct_daily_revenue
+    description: "Daily revenue aggregations"
+    columns:
+      - name: revenue_date
+        description: "Date of revenue"
+        tests:
+          - unique
+          - not_null
+
+  - name: rpt_product_performance
+    description: "Product performance report"
+    columns:
+      - name: product_id
+        description: "Product reference"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_products')
+              field: product_id
+              config:
+                severity: warn
+
+  - name: rpt_customer_cohorts
+    description: "Customer cohort analysis"
+    columns:
+      - name: cohort_month
+        description: "Cohort month"
+        tests:
+          - not_null
+
+  - name: rpt_executive_dashboard
+    description: "Executive dashboard metrics"
+    columns:
+      - name: metric_month
+        description: "Metric month"
+        tests:
+          - not_null
