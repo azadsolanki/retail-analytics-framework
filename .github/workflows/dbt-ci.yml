@@ -216,24 +216,23 @@ jobs:
       - name: Install dbterd
         run: pip install dbterd
 
-      - name: Generate ERD (Business Layer with Semantic Relationships)
+      - name: Generate ERD (Business Layer)
         run: |
           mkdir -p docs
 
-          # Generate ERD with semantic algorithm
-          # Use -s for each selection, exclude elementary models
+          # Generate ERD using default test_relationship algorithm
+          # This reads relationships from your dbt tests
           dbterd run -ad target -o docs -t mermaid \
             -s "model.digital_marketing.dim_" \
             -s "model.digital_marketing.fct_" \
             -s "model.digital_marketing.rpt_" \
-            --exclude "model.elementary" \
-            --algo semantic
+            --exclude "model.elementary"
 
           # Wrap output in markdown code block for GitHub rendering
           echo '# Data Model ERD' > docs/erd.md
           echo '' >> docs/erd.md
-          echo '> Auto-generated from dbt business layer models (dims, facts, reports)' >> docs/erd.md
-          echo '> Relationships inferred using semantic matching on column names' >> docs/erd.md
+          echo '> Auto-generated from dbt business layer models' >> docs/erd.md
+          echo '> Relationships detected from dbt relationship tests' >> docs/erd.md
           echo '' >> docs/erd.md
           echo '```mermaid' >> docs/erd.md
           cat docs/output.md >> docs/erd.md
