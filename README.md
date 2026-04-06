@@ -4,12 +4,13 @@
 [![DBT](https://img.shields.io/badge/dbt-FF694B?style=for-the-badge&logo=dbt&logoColor=white)](https://www.getdbt.com/)
 [![BigQuery](https://img.shields.io/badge/BigQuery-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/bigquery)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
 
 [![DBT Docs](https://img.shields.io/badge/DBT-Documentation-blue)](https://yourusername.github.io/retail-analytics-framework/)
 [![Development Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com/yourusername/retail-analytics-framework)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Production-Ready Analytics Platform**: Demonstrating enterprise-grade data engineering capabilities with comprehensive testing, advanced DBT patterns, and modern data stack integration.
+> **Production-Ready Analytics Platform**: Demonstrating enterprise-grade data engineering capabilities with comprehensive testing, advanced DBT patterns, CI/CD automation, and modern data stack integration.
 
 ---
 
@@ -27,6 +28,7 @@ The **Retail Analytics Framework** is a scalable, production-ready analytics pla
 - **Production Architecture**: Medallion pattern with comprehensive testing framework
 - **Advanced DBT Patterns**: Incremental models, SCD Type 2, custom macros, and performance optimization
 - **Data Quality Engineering**: Multi-layered testing strategy with realistic data handling
+- **CI/CD Automation**: GitHub Actions pipeline with automated testing and ERD generation
 - **Scalable Design**: Built to handle 100K+ transactions with architecture for enterprise growth
 
 ---
@@ -45,14 +47,15 @@ graph TB
     F --> C
     F --> D
     
-    G[Future: CI/CD Pipeline] -.-> H[Future: Automated Testing]
-    H -.-> I[Future: Production Deployment]
-    I -.-> J[Future: Monitoring & Alerting]
+    G[CI/CD Pipeline] --> H[Automated Testing]
+    H --> I[ERD Generation]
+    I --> J[Production Deployment]
     
     style A fill:#e1f5fe
     style D fill:#f3e5f5
     style E fill:#e8f5e8
     style F fill:#fff3e0
+    style G fill:#e3f2fd
 ```
 
 **🥉 Bronze Layer (Staging)**: Data standardization, type casting, and quality issue flagging  
@@ -66,17 +69,43 @@ graph TB
 |-----------|------------|---------|
 | **Data Warehouse** | Google BigQuery | Scalable cloud analytics database |
 | **Transformation** | DBT Core | Data modeling and transformation framework |
-| **Documentation** | DBT Docs | Auto-generated data lineage and documentation |
+| **CI/CD** | GitHub Actions | Automated testing, ERD generation, deployment |
+| **Documentation** | DBT Docs + dbterd | Auto-generated data lineage and ERD diagrams |
 | **Quality Assurance** | Custom Test Suite | Comprehensive data validation framework |
 | **Version Control** | Git/GitHub | Code versioning and collaboration |
 | **Orchestration** | *Planned: Apache Airflow* | Workflow scheduling and monitoring |
-| **CI/CD** | *Planned: GitHub Actions* | Automated testing and deployment |
+
+---
+
+## 🔄 CI/CD Pipeline
+
+### **Automated Workflow**
+
+| Trigger | Jobs That Run |
+|---------|---------------|
+| Push to `feature/**` | Compile → Build & Test |
+| Pull Request to `main` | Compile → Build & Test → Generate Docs |
+| Merge to `main` | Compile → Build & Test → Generate ERD |
+
+### **Pipeline Features**
+- **🔍 Compile**: Validates dbt syntax without BigQuery costs
+- **🏗️ Build & Test**: Creates ephemeral datasets, runs all models and tests
+- **📊 ERD Generation**: Auto-generates Entity Relationship Diagram on merge
+- **📚 Docs Artifact**: Uploads dbt documentation for PR review
+- **🧹 Auto Cleanup**: Removes CI datasets after completion
+
+### **Documentation**
+- [CI/CD Pipeline Guide](docs/CI_CD_README.md)
+- [Data Model ERD](docs/erd.md)
 
 ---
 
 ## 📊 Data Model & Schema
 
 ### **Dimensional Model Overview**
+
+> **[View Interactive ERD](docs/erd.md)** - Auto-generated and always up-to-date
+
 ```mermaid
 erDiagram
     fct_orders {
@@ -199,11 +228,16 @@ WHERE order_status = 'Complete';
 
 ```
 retail-analytics-framework/
-├── 📁 analyses/                   # Ad-hoc analytical 
+├── 📁 .github/workflows/          # CI/CD automation
+│   └── dbt-ci.yml                # GitHub Actions workflow
+├── 📁 analyses/                   # Ad-hoc analytical queries
 ├── 📁 dbt_packages/               # DBT package dependencies
+├── 📁 docs/                       # Documentation
+│   ├── CI_CD_README.md           # CI/CD pipeline guide
+│   └── erd.md                    # Auto-generated ERD
 ├── 📁 macros/                     # Reusable SQL macros
-    ├── 📁 tests/  
-        ├── generate_alias_name.sql
+│   ├── 📁 tests/  
+│   │   └── generate_alias_name.sql
 │   ├── business_logic.sql
 │   └── generate_schema_name.sql
 ├── 📁 models/                     # DBT models by layer
@@ -217,6 +251,7 @@ retail-analytics-framework/
 │   │   ├── int_order_enriched.sql
 │   │   └── int_product_performance.sql
 │   ├── 📁 marts/                 # 🥇 Gold: Dimensional models
+│   │   ├── _core_models.yml      # Schema with relationship tests
 │   │   ├── dim_customers.sql
 │   │   ├── dim_products.sql
 │   │   ├── fct_orders.sql
@@ -231,16 +266,11 @@ retail-analytics-framework/
 ├── 📁 tests/                      # Custom test definitions
 │   ├── generic/                   # Reusable test macros
 │   └── singular/                  # Model-specific tests
-├── 📁 docs/                       # Additional documentation
 ├── 📁 scripts/                    # Utility scripts
 ├── dbt_project.yml               # DBT project configuration
 ├── packages.yml                  # DBT package dependencies
 ├── requirements.txt              # Python dependencies
 └── README.md                     # This documentation
-
-# Future Development Structure (Planned)
-├── 📁 .github/workflows/          # CI/CD automation (planned)
-├── 📁 airflow/                    # Orchestration DAGs (planned)
 ```
 
 ---
@@ -256,7 +286,25 @@ retail-analytics-framework/
 | **Data Integrity** | Primary keys, foreign keys, uniqueness | Prevents analytical errors |
 | **Business Rules** | Age ranges, valid statuses, logical constraints | Ensures business logic compliance |
 | **Data Freshness** | Source data recency, processing windows | Maintains timely insights |
+| **Relationship Tests** | Foreign key validation, ERD generation | Enables automated documentation |
 | **Custom Validation** | Retail-specific rules, cross-model consistency | Domain expertise demonstration |
+
+### **Relationship Tests for ERD**
+*Relationship tests serve dual purposes: data quality validation and ERD generation*
+
+```yaml
+# Example: Relationship test in _core_models.yml
+models:
+  - name: fct_orders
+    columns:
+      - name: user_id
+        tests:
+          - relationships:
+              to: ref('dim_users')
+              field: user_id
+              config:
+                severity: warn
+```
 
 ### **Known Data Quality Patterns**
 *Professional approach to realistic retail data challenges:*
@@ -546,22 +594,23 @@ ORDER BY category, category_revenue DESC;
 
 ## 🚀 Development Roadmap
 
-### **Current Status: Core Platform** ✅ 
-*Fully functional analytics framework with advanced DBT patterns*
+### **Current Status: Core Platform + CI/CD** ✅ 
+*Fully functional analytics framework with automated pipeline*
 
 - ✅ **Medallion Architecture**: Complete bronze → silver → gold → platinum data flow
 - ✅ **Advanced DBT Models**: Staging, intermediate, marts, and reports layers
 - ✅ **Data Quality Framework**: Comprehensive testing with realistic data handling
+- ✅ **CI/CD Pipeline**: GitHub Actions with automated testing and ERD generation
 - ✅ **Performance Optimization**: BigQuery partitioning, clustering, and incremental models
 - ✅ **Business Intelligence**: Customer analytics, product performance, revenue analysis
-- ✅ **Documentation**: Auto-generated DBT docs with data lineage
+- ✅ **Documentation**: Auto-generated DBT docs with data lineage and ERD
 
-### **Phase 1: DevOps Integration** 🚧 *Next Priority*
-*Production-grade automation and monitoring*
+### **Phase 1: CI/CD Enhancements** 🚧 *Next Priority*
+*Advanced automation and optimization*
 
-- [ ] **GitHub Actions CI/CD**: Automated testing, code quality, deployment
-- [ ] **Multi-Environment Setup**: Development, staging, production workflows
-- [ ] **Automated Data Quality**: Continuous monitoring with alerting
+- [ ] **Slim CI**: Only build modified models for faster feedback
+- [ ] **Production Deployment**: Automated deployment to production environment
+- [ ] **dbt Docs Hosting**: GitHub Pages for documentation
 - [ ] **Performance Monitoring**: Query optimization and cost tracking
 
 ### **Phase 2: Enterprise Orchestration** 📋 *Planned*
@@ -582,13 +631,22 @@ ORDER BY category, category_revenue DESC;
 
 ---
 
-## 🚢 Current Deployment & Operations
+## 🚢 Deployment & Operations
 
-### **Manual Deployment Process**
-*Current production-ready deployment workflow*
+### **CI/CD Workflow**
+*Automated deployment pipeline*
 
 ```bash
-# Development workflow
+# CI automatically runs on every push:
+# 1. Compile - Validates syntax
+# 2. Build - Runs models in ephemeral dataset
+# 3. Test - Executes all data tests
+# 4. ERD - Generates diagram (on merge to main)
+```
+
+### **Manual Development Workflow**
+```bash
+# Local development
 dbt deps                          # Install packages
 dbt compile                       # Validate models
 dbt run --select tag:staging      # Build staging layer
@@ -602,26 +660,10 @@ dbt docs serve                    # Serve documentation locally
 ```
 
 ### **Data Quality Management**
-*Proactive approach to production data quality*
-
 - **Test Coverage**: 60+ tests across all layers with appropriate severity levels
-- **Quality Monitoring**: Manual execution with detailed failure analysis
+- **Relationship Tests**: Enable automatic ERD generation
+- **Quality Monitoring**: Automated execution in CI pipeline
 - **Issue Resolution**: Systematic approach to data quality exceptions
-- **Performance Tracking**: Manual query performance and cost monitoring
-
-### **Current Operational Excellence**
-- **Code Quality**: Consistent SQL formatting and comprehensive documentation
-- **Version Control**: Structured Git workflow with meaningful commits
-- **Error Handling**: Graceful management of known data quality issues
-- **Performance**: Optimized BigQuery queries with partitioning and clustering
-
-### **Planned DevOps Enhancements**
-*Roadmap for automated operations*
-
-- **Automated Testing**: GitHub Actions for continuous validation
-- **Deployment Automation**: Multi-environment promotion workflows
-- **Monitoring & Alerting**: Real-time data quality and performance tracking
-- **Cost Optimization**: Automated query performance and resource monitoring
 
 ---
 
@@ -630,48 +672,22 @@ dbt docs serve                    # Serve documentation locally
 ### **Technical Expertise Demonstrated**
 - ✅ **Advanced Analytics Engineering**: Complex DBT patterns, medallion architecture
 - ✅ **Data Quality Engineering**: Comprehensive testing, realistic data handling
+- ✅ **DevOps & CI/CD**: GitHub Actions pipeline, automated testing, ERD generation
 - ✅ **Performance Engineering**: BigQuery optimization, incremental processing  
 - ✅ **Business Intelligence**: Customer analytics, product performance, revenue analysis
 - ✅ **Production Readiness**: Scalable architecture, error handling, documentation
-
-### **Planned Technical Enhancements**
-- 📋 **DevOps Integration**: CI/CD pipelines, automated testing, deployment workflows
-- 📋 **Enterprise Orchestration**: Airflow DAGs, SLA monitoring, advanced alerting
-- 📋 **Platform Expansion**: Multi-environment support, API development, self-service analytics
 
 ### **Business Value Delivered**
 - **360° Customer Intelligence**: Segmentation, lifetime value, behavioral insights
 - **Product Portfolio Optimization**: Performance analytics, margin analysis
 - **Revenue Operations**: Forecasting, trend analysis, growth metrics
-- **Operational Efficiency**: Self-service analytics, automated quality monitoring
+- **Operational Efficiency**: Automated testing, self-documenting data models
 
 ### **Enterprise Readiness**
 - **Scalable Architecture**: Handles 100K+ orders, designed for enterprise growth
 - **Production Patterns**: Error handling, performance optimization, comprehensive documentation
-- **Code Quality**: Consistent formatting, reusable components, clear structure
+- **Automated Pipeline**: CI/CD with ephemeral datasets and auto-cleanup
 - **Development Approach**: Systematic build process, thorough testing, iterative enhancement
-
----
-
-## 🔄 Development Roadmap & Future Enhancements
-
-### **Phase 1: DevOps Integration** 🚧 *In Development*
-- [ ] **GitHub Actions CI/CD**: Automated testing, code quality validation, deployment pipelines
-- [ ] **Multi-Environment Support**: Development, staging, and production configurations
-- [ ] **Automated Data Quality**: Continuous monitoring with intelligent alerting
-- [ ] **Performance Monitoring**: Query optimization tracking and cost management
-
-### **Phase 2: Enterprise Orchestration** 📋 *Planned Q4 2025*
-- [ ] **Apache Airflow Integration**: Production DAGs with sophisticated dependency management
-- [ ] **SLA Monitoring**: Business continuity tracking and performance optimization
-- [ ] **Advanced Alerting**: Multi-channel notifications (Slack, email, dashboard)
-- [ ] **Resource Optimization**: Dynamic scaling and intelligent cost management
-
-### **Phase 3: Advanced Analytics Platform** 🎯 *Future Vision*
-- [ ] **Machine Learning Integration**: Customer churn prediction, demand forecasting models
-- [ ] **Real-time Processing**: Streaming data integration with Kafka/Pub Sub
-- [ ] **Self-Service Analytics**: Business user interface with natural language querying
-- [ ] **Multi-tenant Architecture**: Support for multiple retail brands and datasets
 
 ---
 
@@ -684,7 +700,7 @@ dbt docs serve                    # Serve documentation locally
 - 📱 **GitHub**: [@azadsolanki](https://github.com/azadsolanki)
 
 ### **Expertise Showcase**
-This framework demonstrates comprehensive analytics engineering capabilities including advanced DBT patterns, enterprise data quality management, production DataOps practices, and business-focused analytics solutions suitable for retail organizations seeking scalable, reliable data platforms.
+This framework demonstrates comprehensive analytics engineering capabilities including advanced DBT patterns, enterprise data quality management, CI/CD automation, and business-focused analytics solutions suitable for retail organizations seeking scalable, reliable data platforms.
 
 ---
 
@@ -695,8 +711,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Built with modern data stack technologies:**
 - [DBT](https://www.getdbt.com/) for transformation framework
 - [Google BigQuery](https://cloud.google.com/bigquery) for analytics database
-- [Apache Airflow](https://airflow.apache.org/) for orchestration
-- [GitHub Actions](https://github.com/features/actions) for CI/CD
+- [GitHub Actions](https://github.com/features/actions) for CI/CD automation
+- [dbterd](https://github.com/datnguye/dbterd) for ERD generation
+- [Apache Airflow](https://airflow.apache.org/) for orchestration *(planned)*
 
 ---
 
