@@ -1,10 +1,15 @@
 # =========================================================
-# dbt CI/CD Pipeline
+# dbt CI/CD Pipeline with Slim CI
 # =========================================================
 #
 # WORKFLOW:
-#   - PRs: compile → build → docs artifact
-#   - Main: compile → build → ERD generation (committed to repo)
+#   - PRs: compile → slim build (only modified models)
+#   - Main: compile → full build → save manifest → ERD generation
+#
+# SLIM CI:
+#   - Compares against production manifest
+#   - Only builds changed models + downstream dependencies
+#   - Significantly faster PR feedback
 #
 # =========================================================
 
@@ -90,7 +95,7 @@ jobs:
         run: dbt compile
 
   # =========================================================
-  # JOB 2: BUILD
+  # JOB 2: BUILD (Slim CI for PRs, Full Build for Main)
   # =========================================================
   build:
     name: 🏗️ Build & Test
@@ -145,10 +150,62 @@ jobs:
       - name: Install dbt packages
         run: dbt deps
 
-      - name: Build dbt project
-        run: dbt build --exclude snap_products
+      # -------------------------------------------------------
+      # SLIM CI: Download production manifest for comparison
+      # -------------------------------------------------------
+      - name: Download production manifest
+        if: github.event_name == 'pull_request'
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: prod-manifest
+          path: ./prod-manifest
+          branch: main
+          workflow_conclusion: success
+          if_no_artifact_found: warn
+        continue-on-error: true
 
-      # Cleanup for non-main branches (ERD job handles cleanup for main)
+      - name: Check if manifest exists
+        id: check_manifest
+        run: |
+          if [ -f "./prod-manifest/manifest.json" ]; then
+            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Production manifest found - using Slim CI"
+          else
+            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No production manifest found - running full build"
+          fi
+
+      # -------------------------------------------------------
+      # SLIM CI BUILD (PRs only, when manifest exists)
+      # -------------------------------------------------------
+      - name: "🚀 Slim CI: Build modified models only"
+        if: github.event_name == 'pull_request' && steps.check_manifest.outputs.manifest_exists == 'true'
+        run: |
+          echo "Running Slim CI - only building modified models and their children"
+          dbt build --select state:modified+ --defer --state ./prod-manifest --exclude snap_products
+
+      # -------------------------------------------------------
+      # FULL BUILD (Main branch or when no manifest)
+      # -------------------------------------------------------
+      - name: "🔨 Full Build: All models"
+        if: github.ref == 'refs/heads/main' || steps.check_manifest.outputs.manifest_exists == 'false'
+        run: |
+          echo "Running full build - all models"
+          dbt build --exclude snap_products
+
+      # -------------------------------------------------------
+      # SAVE MANIFEST (Main branch only)
+      # -------------------------------------------------------
+      - name: Save production manifest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: target/manifest.json
+          retention-days: 90
+          overwrite: true
+
+      # Cleanup for non-main branches
       - name: Cleanup CI dataset
         if: always() && github.ref != 'refs/heads/main'
         run: |

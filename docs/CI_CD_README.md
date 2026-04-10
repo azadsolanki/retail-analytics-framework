@@ -2,15 +2,50 @@
 
 ## Overview
 
-This repository uses GitHub Actions to automate dbt testing, documentation, and ERD generation.
+This repository uses GitHub Actions to automate dbt testing, documentation, and ERD generation with **Slim CI** for faster PR feedback.
 
 ## Workflow Summary
 
 | Trigger | Jobs That Run |
 |---------|---------------|
-| Push to `feature/**` | compile → build |
-| Pull Request to `main` | compile → build → docs |
-| Merge to `main` | compile → build → ERD generation |
+| Push to `feature/**` | compile → full build |
+| Pull Request to `main` | compile → **slim build** → docs |
+| Merge to `main` | compile → full build → save manifest → ERD generation |
+
+## Slim CI
+
+**Slim CI** dramatically speeds up PR builds by only running modified models and their downstream dependencies.
+
+### How It Works
+
+```
+1. On merge to main: manifest.json is saved as artifact
+2. On PR: Download production manifest
+3. Compare current code against manifest
+4. Only build changed models + their children
+```
+
+### Commands
+
+```bash
+# Full build (main branch)
+dbt build
+
+# Slim CI (PRs)
+dbt build --select state:modified+ --defer --state ./prod-manifest
+```
+
+### Benefits
+
+| Metric | Full Build | Slim CI |
+|--------|-----------|---------|
+| Models built | 45+ | Only changed |
+| Time | ~10 min | ~2-3 min |
+| Cost | Higher | Lower |
+
+### First Run
+
+The first PR after enabling Slim CI will run a **full build** because no production manifest exists yet. After the first merge to main, subsequent PRs will use Slim CI.
 
 ## Jobs
 
@@ -92,6 +127,7 @@ All datasets are automatically deleted after the workflow completes.
 
 ## Future Enhancements
 
-- [ ] Slim CI (only build modified models)
+- [x] Slim CI (only build modified models)
 - [ ] Production deployment workflow
 - [ ] dbt docs hosting (GitHub Pages or similar)
+- [ ] Slack notifications for CI failures
