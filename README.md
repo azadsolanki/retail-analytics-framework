@@ -6,8 +6,8 @@
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
 
-[![DBT Docs](https://img.shields.io/badge/DBT-Documentation-blue)](https://yourusername.github.io/retail-analytics-framework/)
-[![Development Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com/yourusername/retail-analytics-framework)
+[![DBT Docs](https://img.shields.io/badge/DBT-Documentation-blue)](https://azadsolanki.github.io/retail-analytics-framework/)
+[![Development Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com/azadsolanki/retail-analytics-framework)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **Production-Ready Analytics Platform**: Demonstrating enterprise-grade data engineering capabilities with comprehensive testing, advanced DBT patterns, CI/CD automation, and modern data stack integration.
@@ -153,7 +153,7 @@ erDiagram
     dim_products ||--o{ bridge_order_items : "includes"
 ```
 
-### 🔗 **[Interactive Data Documentation](https://yourusername.github.io/retail-analytics-framework/)**
+### [Interactive Data Documentation](https://azadsolanki.github.io/retail-analytics-framework/)
 
 ---
 
@@ -168,7 +168,7 @@ erDiagram
 ### **1. Environment Setup**
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/retail-analytics-framework.git
+git clone https://github.com/azadsolanki/retail-analytics-framework.git
 cd retail-analytics-framework
 
 # Create and activate virtual environment
