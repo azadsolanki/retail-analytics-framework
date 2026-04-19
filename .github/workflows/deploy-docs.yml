@@ -1,0 +1,113 @@
+# Deploy dbt docs to GitHub Pages
+#
+# Triggers on merge to main after the CI workflow completes.
+# Docs are available at: https://azadsolanki.github.io/retail-analytics-framework/
+
+name: Deploy dbt Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "models/**"
+      - "macros/**"
+      - "dbt_project.yml"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  DBT_PROJECT: data-products-441119
+  DBT_PROFILE: thelook_analytics
+  DBT_DATASET: dbt_docs_${{ github.run_id }}
+
+jobs:
+  build:
+    name: Build Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create keyfile for dbt
+        run: |
+          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
+          chmod 600 /tmp/gcp-key.json
+
+      - name: Create profiles.yml
+        run: |
+          cat << EOF > profiles.yml
+          ${{ env.DBT_PROFILE }}:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account
+                project: ${{ env.DBT_PROJECT }}
+                dataset: ${{ env.DBT_DATASET }}
+                threads: 4
+                timeout_seconds: 300
+                location: US
+                keyfile: /tmp/gcp-key.json
+          EOF
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Generate dbt docs
+        run: dbt docs generate
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target
+
+      - name: Cleanup dataset
+        if: always()
+        run: bq rm -r -f ${{ env.DBT_PROJECT }}:${{ env.DBT_DATASET }} || true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
