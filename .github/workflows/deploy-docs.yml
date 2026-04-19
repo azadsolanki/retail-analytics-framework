@@ -83,6 +83,9 @@ jobs:
       - name: Install dbt packages
         run: dbt deps
 
+      - name: Build models
+        run: dbt build --exclude snap_products
+
       - name: Generate dbt docs
         run: dbt docs generate
 
