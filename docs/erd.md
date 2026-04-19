@@ -1,7 +1,6 @@
 # Data Model ERD
 
-> Auto-generated from dbt business layer models
-> Relationships detected from dbt relationship tests
+Auto-generated from dbt relationship tests.
 
 ```mermaid
 erDiagram
