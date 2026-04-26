@@ -1,0 +1,54 @@
+# Semantic Model: Products
+# Defines the product dimension for MetricFlow
+# Enables product performance and margin analysis
+
+semantic_models:
+  - name: products
+    description: |
+      Product dimension with categories, brands, and performance tiers.
+      Grain: one row per product.
+    model: ref('dim_products')
+
+    entities:
+      - name: product
+        type: primary
+        expr: product_id
+
+    measures:
+      - name: product_count
+        description: Total number of products
+        agg: count
+        expr: product_id
+
+      - name: average_margin
+        description: Average product margin percentage
+        agg: average
+        expr: margin_percentage
+
+      - name: star_product_count
+        description: Count of star performer products
+        agg: sum
+        expr: "case when performance_tier = 'Star' then 1 else 0 end"
+
+    dimensions:
+      - name: category
+        type: categorical
+        expr: category
+
+      - name: brand
+        type: categorical
+        expr: brand
+
+      - name: performance_tier
+        type: categorical
+        expr: performance_tier
+        description: "Star, High Performer, Good, Average"
+
+      - name: price_category
+        type: categorical
+        expr: price_category
+        description: "Luxury, Premium, Mid-Range, Budget"
+
+      - name: product_name
+        type: categorical
+        expr: product_name

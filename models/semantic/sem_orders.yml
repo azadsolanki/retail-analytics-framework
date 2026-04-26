@@ -1,0 +1,76 @@
+# Semantic Model: Orders
+# Defines the orders fact table for MetricFlow
+# This enables consistent metric definitions across all BI tools and AI agents
+
+semantic_models:
+  - name: orders
+    description: |
+      Order transactions with revenue, profit, and customer metrics.
+      Grain: one row per order.
+    model: ref('fct_orders')
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+      - name: customer
+        type: foreign
+        expr: user_id
+
+    measures:
+      - name: order_count
+        description: Total number of orders
+        agg: count
+        expr: order_id
+
+      - name: total_revenue
+        description: Total order revenue (order_total)
+        agg: sum
+        expr: order_total
+
+      - name: total_gross_profit
+        description: Total gross profit across orders
+        agg: sum
+        expr: total_gross_profit
+
+      - name: average_order_value
+        description: Average order value
+        agg: average
+        expr: order_total
+
+      - name: first_order_count
+        description: Count of first-time orders
+        agg: sum
+        expr: "case when is_first_order then 1 else 0 end"
+
+      - name: returning_order_count
+        description: Count of returning customer orders
+        agg: sum
+        expr: "case when not is_first_order then 1 else 0 end"
+
+      - name: unique_customers
+        description: Count of unique customers
+        agg: count_distinct
+        expr: user_id
+
+    dimensions:
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: order_date
+
+      - name: order_status
+        type: categorical
+        expr: order_status
+
+      - name: order_size_category
+        type: categorical
+        expr: order_size_category
+        description: "Large, Medium, Small, Micro"
+
+      - name: is_first_order
+        type: categorical
+        expr: is_first_order

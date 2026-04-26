@@ -1,0 +1,169 @@
+# Metrics Definitions
+# Business metrics built on top of semantic models
+# These are the "single source of truth" for key business KPIs
+
+metrics:
+  # =============================================================
+  # Revenue Metrics
+  # =============================================================
+  - name: revenue
+    description: Total revenue from completed orders
+    type: simple
+    label: Revenue
+    type_params:
+      measure: total_revenue
+    filter: |
+      {{ Dimension('order__order_status') }} = 'Complete'
+
+  - name: gross_profit
+    description: Total gross profit from completed orders
+    type: simple
+    label: Gross Profit
+    type_params:
+      measure: total_gross_profit
+    filter: |
+      {{ Dimension('order__order_status') }} = 'Complete'
+
+  - name: gross_margin
+    description: Gross profit as percentage of revenue
+    type: derived
+    label: Gross Margin %
+    type_params:
+      expr: gross_profit / nullif(revenue, 0) * 100
+      metrics:
+        - name: gross_profit
+        - name: revenue
+
+  - name: aov
+    description: Average order value
+    type: simple
+    label: Average Order Value
+    type_params:
+      measure: average_order_value
+    filter: |
+      {{ Dimension('order__order_status') }} = 'Complete'
+
+  # =============================================================
+  # Order Metrics
+  # =============================================================
+  - name: orders
+    description: Total number of orders
+    type: simple
+    label: Orders
+    type_params:
+      measure: order_count
+
+  - name: completed_orders
+    description: Number of completed orders
+    type: simple
+    label: Completed Orders
+    type_params:
+      measure: order_count
+    filter: |
+      {{ Dimension('order__order_status') }} = 'Complete'
+
+  # =============================================================
+  # Customer Metrics
+  # =============================================================
+  - name: customers
+    description: Total number of customers
+    type: simple
+    label: Customers
+    type_params:
+      measure: customer_count
+
+  - name: new_customers
+    description: Number of first-time customers (by order)
+    type: simple
+    label: New Customers
+    type_params:
+      measure: first_order_count
+
+  - name: returning_customers
+    description: Number of returning customer orders
+    type: simple
+    label: Returning Customers
+    type_params:
+      measure: returning_order_count
+
+  - name: customer_ltv
+    description: Average customer lifetime value
+    type: simple
+    label: Customer LTV
+    type_params:
+      measure: average_lifetime_value
+
+  - name: new_customer_rate
+    description: Percentage of orders from new customers
+    type: derived
+    label: New Customer Rate %
+    type_params:
+      expr: new_customers / nullif(orders, 0) * 100
+      metrics:
+        - name: new_customers
+        - name: orders
+
+  # =============================================================
+  # Customer Segment Metrics
+  # =============================================================
+  - name: vip_customers
+    description: Number of VIP segment customers
+    type: simple
+    label: VIP Customers
+    type_params:
+      measure: vip_customer_count
+
+  - name: churned_customers
+    description: Number of churned customers
+    type: simple
+    label: Churned Customers
+    type_params:
+      measure: churned_customer_count
+
+  - name: at_risk_customers
+    description: Number of at-risk customers
+    type: simple
+    label: At Risk Customers
+    type_params:
+      measure: at_risk_customer_count
+
+  - name: churn_rate
+    description: Percentage of customers who churned
+    type: derived
+    label: Churn Rate %
+    type_params:
+      expr: churned_customers / nullif(customers, 0) * 100
+      metrics:
+        - name: churned_customers
+        - name: customers
+
+  # =============================================================
+  # Product Metrics
+  # =============================================================
+  - name: products_sold
+    description: Total number of product items sold
+    type: simple
+    label: Products Sold
+    type_params:
+      measure: items_sold
+
+  - name: product_revenue
+    description: Total revenue from product sales
+    type: simple
+    label: Product Revenue
+    type_params:
+      measure: item_revenue
+
+  - name: return_rate
+    description: Percentage of items returned
+    type: simple
+    label: Return Rate %
+    type_params:
+      measure: return_rate
+
+  - name: star_products
+    description: Number of star performer products
+    type: simple
+    label: Star Products
+    type_params:
+      measure: star_product_count
