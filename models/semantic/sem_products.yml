@@ -8,6 +8,8 @@ semantic_models:
       Product dimension with categories, brands, and performance metrics.
       Grain: one row per product.
     model: ref('dim_products')
+    defaults:
+      agg_time_dimension: first_sale_date
 
     entities:
       - name: product
@@ -19,38 +21,51 @@ semantic_models:
         description: Total number of products
         agg: count
         expr: product_id
+        agg_time_dimension: first_sale_date
 
       - name: total_product_revenue
         description: Total revenue from all products
         agg: sum
         expr: total_revenue
+        agg_time_dimension: first_sale_date
 
       - name: total_product_profit
         description: Total gross profit from all products
         agg: sum
         expr: total_gross_profit
+        agg_time_dimension: first_sale_date
 
       - name: total_units_sold
         description: Total units sold across all products
         agg: sum
         expr: total_units_sold
+        agg_time_dimension: first_sale_date
 
       - name: total_units_returned
         description: Total units returned
         agg: sum
         expr: units_returned
+        agg_time_dimension: first_sale_date
 
       - name: average_margin
         description: Average product margin percentage
         agg: average
         expr: margin_percentage
+        agg_time_dimension: first_sale_date
 
       - name: average_return_rate
         description: Average product return rate
         agg: average
         expr: return_rate
+        agg_time_dimension: first_sale_date
 
     dimensions:
+      - name: first_sale_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: first_sale_date
+
       - name: category
         type: categorical
         expr: category
