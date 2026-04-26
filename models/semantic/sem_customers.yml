@@ -1,13 +1,13 @@
-# Semantic Model: Customers
+# Semantic Model: Customers (Users)
 # Defines the customer dimension for MetricFlow
 # Enables customer-centric metrics and segmentation analysis
 
 semantic_models:
   - name: customers
     description: |
-      Customer dimension with segmentation, lifetime value, and RFM scores.
+      Customer dimension with segmentation, lifetime value, and order history.
       Grain: one row per customer.
-    model: ref('dim_customers')
+    model: ref('dim_users')
 
     entities:
       - name: customer
@@ -30,32 +30,46 @@ semantic_models:
         agg: average
         expr: lifetime_value
 
-      - name: vip_customer_count
-        description: Count of VIP segment customers
+      - name: total_customer_orders
+        description: Sum of total orders across customers
         agg: sum
-        expr: "case when value_segment = 'VIP' then 1 else 0 end"
-
-      - name: churned_customer_count
-        description: Count of churned customers
-        agg: sum
-        expr: "case when activity_segment = 'Churned' then 1 else 0 end"
-
-      - name: at_risk_customer_count
-        description: Count of at-risk customers
-        agg: sum
-        expr: "case when activity_segment = 'At Risk' then 1 else 0 end"
+        expr: total_orders
 
     dimensions:
-      - name: value_segment
+      - name: age_group
         type: categorical
-        expr: value_segment
-        description: "VIP, Loyal, Regular, New, Prospect"
+        expr: age_group
 
-      - name: activity_segment
+      - name: generation
         type: categorical
-        expr: activity_segment
-        description: "Active, At Risk, Dormant, Churned"
+        expr: generation
 
-      - name: full_name
+      - name: gender
         type: categorical
-        expr: full_name
+        expr: gender
+
+      - name: country
+        type: categorical
+        expr: country
+
+      - name: region
+        type: categorical
+        expr: region
+
+      - name: traffic_source
+        type: categorical
+        expr: traffic_source
+
+      - name: acquisition_channel
+        type: categorical
+        expr: acquisition_channel
+
+      - name: is_domestic
+        type: categorical
+        expr: is_domestic
+
+      - name: registration_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: registration_date
