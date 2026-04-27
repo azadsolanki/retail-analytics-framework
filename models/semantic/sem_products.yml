@@ -5,7 +5,7 @@
 semantic_models:
   - name: products
     description: |
-      Product dimension with categories, brands, and performance tiers.
+      Product dimension with categories, brands, and performance metrics.
       Grain: one row per product.
     model: ref('dim_products')
 
@@ -20,34 +20,64 @@ semantic_models:
         agg: count
         expr: product_id
 
+      - name: total_product_revenue
+        description: Total revenue from all products
+        agg: sum
+        expr: total_revenue
+
+      - name: total_product_profit
+        description: Total gross profit from all products
+        agg: sum
+        expr: total_gross_profit
+
+      - name: total_units_sold
+        description: Total units sold across all products
+        agg: sum
+        expr: total_units_sold
+
+      - name: total_units_returned
+        description: Total units returned
+        agg: sum
+        expr: units_returned
+
       - name: average_margin
         description: Average product margin percentage
         agg: average
         expr: margin_percentage
 
-      - name: star_product_count
-        description: Count of star performer products
-        agg: sum
-        expr: "case when performance_tier = 'Star' then 1 else 0 end"
+      - name: average_return_rate
+        description: Average product return rate
+        agg: average
+        expr: return_rate
 
     dimensions:
       - name: category
         type: categorical
         expr: category
 
+      - name: category_group
+        type: categorical
+        expr: category_group
+
       - name: brand
         type: categorical
         expr: brand
 
-      - name: performance_tier
+      - name: brand_tier
         type: categorical
-        expr: performance_tier
-        description: "Star, High Performer, Good, Average"
+        expr: brand_tier
+
+      - name: department
+        type: categorical
+        expr: department
+
+      - name: margin_tier
+        type: categorical
+        expr: margin_tier
 
       - name: price_category
         type: categorical
         expr: price_category
-        description: "Luxury, Premium, Mid-Range, Budget"
 
       - name: product_name
         type: categorical

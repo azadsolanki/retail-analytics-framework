@@ -7,22 +7,34 @@ metrics:
   # Revenue Metrics
   # =============================================================
   - name: revenue
-    description: Total revenue from completed orders
+    description: Total revenue from all orders
     type: simple
     label: Revenue
+    type_params:
+      measure: total_revenue
+
+  - name: completed_revenue
+    description: Total revenue from completed orders only
+    type: simple
+    label: Completed Revenue
     type_params:
       measure: total_revenue
     filter: |
       {{ Dimension('order__order_status') }} = 'Complete'
 
+  - name: net_revenue
+    description: Net revenue excluding returns
+    type: simple
+    label: Net Revenue
+    type_params:
+      measure: net_revenue
+
   - name: gross_profit
-    description: Total gross profit from completed orders
+    description: Total gross profit
     type: simple
     label: Gross Profit
     type_params:
       measure: total_gross_profit
-    filter: |
-      {{ Dimension('order__order_status') }} = 'Complete'
 
   - name: gross_margin
     description: Gross profit as percentage of revenue
@@ -40,8 +52,23 @@ metrics:
     label: Average Order Value
     type_params:
       measure: average_order_value
-    filter: |
-      {{ Dimension('order__order_status') }} = 'Complete'
+
+  - name: returns
+    description: Total value of returned items
+    type: simple
+    label: Returns
+    type_params:
+      measure: returned_amount
+
+  - name: return_rate
+    description: Return amount as percentage of revenue
+    type: derived
+    label: Return Rate %
+    type_params:
+      expr: returns / nullif(revenue, 0) * 100
+      metrics:
+        - name: returns
+        - name: revenue
 
   # =============================================================
   # Order Metrics
@@ -62,6 +89,13 @@ metrics:
     filter: |
       {{ Dimension('order__order_status') }} = 'Complete'
 
+  - name: items_sold
+    description: Total line items sold
+    type: simple
+    label: Items Sold
+    type_params:
+      measure: total_items_sold
+
   # =============================================================
   # Customer Metrics
   # =============================================================
@@ -72,19 +106,12 @@ metrics:
     type_params:
       measure: customer_count
 
-  - name: new_customers
-    description: Number of first-time customers (by order)
+  - name: active_customers
+    description: Unique customers who placed orders
     type: simple
-    label: New Customers
+    label: Active Customers
     type_params:
-      measure: first_order_count
-
-  - name: returning_customers
-    description: Number of returning customer orders
-    type: simple
-    label: Returning Customers
-    type_params:
-      measure: returning_order_count
+      measure: unique_customers
 
   - name: customer_ltv
     description: Average customer lifetime value
@@ -93,77 +120,50 @@ metrics:
     type_params:
       measure: average_lifetime_value
 
-  - name: new_customer_rate
-    description: Percentage of orders from new customers
-    type: derived
-    label: New Customer Rate %
-    type_params:
-      expr: new_customers / nullif(orders, 0) * 100
-      metrics:
-        - name: new_customers
-        - name: orders
-
   # =============================================================
   # Customer Segment Metrics
   # =============================================================
-  - name: vip_customers
-    description: Number of VIP segment customers
+  - name: total_ltv
+    description: Total lifetime value across all customers
     type: simple
-    label: VIP Customers
+    label: Total LTV
     type_params:
-      measure: vip_customer_count
-
-  - name: churned_customers
-    description: Number of churned customers
-    type: simple
-    label: Churned Customers
-    type_params:
-      measure: churned_customer_count
-
-  - name: at_risk_customers
-    description: Number of at-risk customers
-    type: simple
-    label: At Risk Customers
-    type_params:
-      measure: at_risk_customer_count
-
-  - name: churn_rate
-    description: Percentage of customers who churned
-    type: derived
-    label: Churn Rate %
-    type_params:
-      expr: churned_customers / nullif(customers, 0) * 100
-      metrics:
-        - name: churned_customers
-        - name: customers
+      measure: total_lifetime_value
 
   # =============================================================
   # Product Metrics
   # =============================================================
-  - name: products_sold
-    description: Total number of product items sold
-    type: simple
-    label: Products Sold
-    type_params:
-      measure: items_sold
-
   - name: product_revenue
-    description: Total revenue from product sales
+    description: Total revenue from products
     type: simple
     label: Product Revenue
     type_params:
-      measure: item_revenue
+      measure: total_product_revenue
 
-  - name: return_rate
-    description: Percentage of items returned
+  - name: product_profit
+    description: Total profit from products
     type: simple
-    label: Return Rate %
+    label: Product Profit
     type_params:
-      measure: return_rate
+      measure: total_product_profit
 
-  - name: star_products
-    description: Number of star performer products
+  - name: units_sold
+    description: Total units sold
     type: simple
-    label: Star Products
+    label: Units Sold
     type_params:
-      measure: star_product_count
+      measure: total_units_sold
+
+  - name: units_returned
+    description: Total units returned
+    type: simple
+    label: Units Returned
+    type_params:
+      measure: total_units_returned
+
+  - name: product_return_rate
+    description: Average product return rate
+    type: simple
+    label: Product Return Rate %
+    type_params:
+      measure: average_return_rate

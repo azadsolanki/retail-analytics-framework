@@ -26,29 +26,34 @@ semantic_models:
         expr: order_id
 
       - name: total_revenue
-        description: Total order revenue (order_total)
+        description: Total order revenue
         agg: sum
         expr: order_total
+
+      - name: net_revenue
+        description: Net revenue (excluding returns)
+        agg: sum
+        expr: net_order_total
 
       - name: total_gross_profit
         description: Total gross profit across orders
         agg: sum
         expr: total_gross_profit
 
+      - name: returned_amount
+        description: Total amount from returned items
+        agg: sum
+        expr: returned_amount
+
       - name: average_order_value
         description: Average order value
         agg: average
         expr: order_total
 
-      - name: first_order_count
-        description: Count of first-time orders
+      - name: total_items_sold
+        description: Total line items sold
         agg: sum
-        expr: "case when is_first_order then 1 else 0 end"
-
-      - name: returning_order_count
-        description: Count of returning customer orders
-        agg: sum
-        expr: "case when not is_first_order then 1 else 0 end"
+        expr: total_line_items
 
       - name: unique_customers
         description: Count of unique customers
@@ -66,11 +71,38 @@ semantic_models:
         type: categorical
         expr: order_status
 
-      - name: order_size_category
+      - name: order_time_of_day
         type: categorical
-        expr: order_size_category
-        description: "Large, Medium, Small, Micro"
+        expr: order_time_of_day
 
-      - name: is_first_order
+      - name: order_day_name
         type: categorical
-        expr: is_first_order
+        expr: order_day_name
+
+      - name: is_weekend
+        type: categorical
+        expr: is_weekend
+
+      - name: customer_gender
+        type: categorical
+        expr: customer_gender
+
+      - name: customer_age_group
+        type: categorical
+        expr: customer_age_group
+
+      - name: customer_generation
+        type: categorical
+        expr: customer_generation
+
+      - name: customer_country
+        type: categorical
+        expr: customer_country
+
+      - name: customer_region
+        type: categorical
+        expr: customer_region
+
+      - name: is_domestic_customer
+        type: categorical
+        expr: is_domestic_customer
