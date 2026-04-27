@@ -1,0 +1,61 @@
+# Semantic Model: Customers
+# Defines the customer dimension for MetricFlow
+# Enables customer-centric metrics and segmentation analysis
+
+semantic_models:
+  - name: customers
+    description: |
+      Customer dimension with segmentation, lifetime value, and RFM scores.
+      Grain: one row per customer.
+    model: ref('dim_customers')
+
+    entities:
+      - name: customer
+        type: primary
+        expr: user_id
+
+    measures:
+      - name: customer_count
+        description: Total number of customers
+        agg: count
+        expr: user_id
+
+      - name: total_lifetime_value
+        description: Sum of customer lifetime values
+        agg: sum
+        expr: lifetime_value
+
+      - name: average_lifetime_value
+        description: Average customer lifetime value
+        agg: average
+        expr: lifetime_value
+
+      - name: vip_customer_count
+        description: Count of VIP segment customers
+        agg: sum
+        expr: "case when value_segment = 'VIP' then 1 else 0 end"
+
+      - name: churned_customer_count
+        description: Count of churned customers
+        agg: sum
+        expr: "case when activity_segment = 'Churned' then 1 else 0 end"
+
+      - name: at_risk_customer_count
+        description: Count of at-risk customers
+        agg: sum
+        expr: "case when activity_segment = 'At Risk' then 1 else 0 end"
+
+    dimensions:
+      - name: value_segment
+        type: categorical
+        expr: value_segment
+        description: "VIP, Loyal, Regular, New, Prospect"
+
+      - name: activity_segment
+        type: categorical
+        expr: activity_segment
+        description: "Active, At Risk, Dormant, Churned"
+
+      - name: full_name
+        type: categorical
+        expr: full_name

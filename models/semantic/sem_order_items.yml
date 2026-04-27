@@ -1,0 +1,52 @@
+# Semantic Model: Order Items
+# Defines the order line items for MetricFlow
+# Enables product-level revenue and quantity analysis
+
+semantic_models:
+  - name: order_items
+    description: |
+      Order line items linking orders to products.
+      Grain: one row per order item.
+    model: ref('bridge_order_items')
+
+    entities:
+      - name: order_item
+        type: primary
+        expr: order_item_id
+      - name: order
+        type: foreign
+        expr: order_id
+      - name: product
+        type: foreign
+        expr: product_id
+
+    measures:
+      - name: items_sold
+        description: Total number of items sold
+        agg: sum
+        expr: quantity
+
+      - name: item_revenue
+        description: Total revenue from items
+        agg: sum
+        expr: "quantity * unit_price"
+
+      - name: items_returned
+        description: Count of returned items
+        agg: sum
+        expr: "case when is_returned then quantity else 0 end"
+
+      - name: return_rate
+        description: Percentage of items returned
+        agg: average
+        expr: "case when is_returned then 1.0 else 0.0 end"
+
+      - name: average_unit_price
+        description: Average unit price
+        agg: average
+        expr: unit_price
+
+    dimensions:
+      - name: is_returned
+        type: categorical
+        expr: is_returned
