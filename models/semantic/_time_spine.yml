@@ -1,0 +1,31 @@
+# Time Spine Configuration
+# Required for MetricFlow time-based calculations
+
+models:
+  - name: metricflow_time_spine
+    description: |
+      Date dimension table required by MetricFlow for time-based metric calculations.
+      Includes daily dates from 2020 to 2030.
+    columns:
+      - name: date_day
+        description: Calendar date
+        tests:
+          - unique
+          - not_null
+
+semantic_models:
+  - name: time_spine
+    description: MetricFlow time spine
+    model: ref('metricflow_time_spine')
+    defaults:
+      agg_time_dimension: date_day
+    entities:
+      - name: date
+        type: primary
+        expr: date_day
+    dimensions:
+      - name: date_day
+        type: time
+        type_params:
+          time_granularity: day
+        expr: date_day
