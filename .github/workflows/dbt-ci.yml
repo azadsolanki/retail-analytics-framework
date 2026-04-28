@@ -157,9 +157,9 @@ jobs:
       - name: Build modified models only (Slim CI)
         if: github.event_name == 'pull_request' && steps.download_manifest.outputs.manifest_exists == 'true'
         run: |
-          echo "Running Slim CI - building modified models and downstream dependencies"
-          dbt ls --select state:modified+ --state ./prod-manifest || echo "No modified models found"
-          dbt build --select state:modified+ --state ./prod-manifest --exclude snap_products
+          echo "Running Slim CI - building modified models with all dependencies"
+          dbt ls --select +state:modified+ --state ./prod-manifest || echo "No modified models found"
+          dbt build --select +state:modified+ --state ./prod-manifest --exclude snap_products
 
       # Full build (main branch or no manifest available)
       - name: Build all models (Full)
