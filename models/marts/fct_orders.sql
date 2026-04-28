@@ -1,7 +1,7 @@
 {{ config(
     materialized='incremental',
     unique_key='order_id',
-    on_schema_change='sync_all_columns',
+    on_schema_change='append_new_columns',
     partition_by={
         "field": "order_date",
         "data_type": "timestamp",
