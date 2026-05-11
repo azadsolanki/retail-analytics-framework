@@ -139,6 +139,14 @@ Access at `http://localhost:8080` (default)
 - Monitor SLAs
 - Trigger manual runs
 
+### Troubleshoot
+
+- Local Airflow Dag can fail due to:
+  - Not having dbt profile. Fix: Ensure dbt profile is present
+  - Missing GCP Authentication. Fix: Run  `gcloud auth application-default login`
+  - Missing dbt deps step. Fix: Run dbt deps dag first.  
+
+
 ### Slack Alerts
 
 Configure webhook in Airflow connections for:
