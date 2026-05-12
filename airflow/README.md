@@ -10,147 +10,122 @@ Production orchestration for dbt using Apache Airflow.
 | `dbt_incremental` | Hourly | Only incremental models |
 | `dbt_source_freshness` | Every 30 min | Monitor source data freshness |
 
-## Setup
+## Configuration
 
-### 1. Install Airflow with dbt
+DAGs use environment variables for flexibility:
 
-```bash
-uv pip install apache-airflow apache-airflow-providers-slack dbt-bigquery
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DBT_PROJECT_DIR` | `/home/airflow/gcs/dags/dbt` | Path to dbt project |
+| `DBT_TARGET` | `prod` | dbt target to use |
 
-### 2. Configure Connections
+## Local Setup
 
-In Airflow UI → Admin → Connections:
-
-**Google Cloud Connection:**
-- Conn ID: `google_cloud_default`
-- Conn Type: Google Cloud
-- Keyfile JSON: Your service account key
-
-**Slack Webhook:**
-- Conn ID: `slack_webhook`
-- Conn Type: Slack Webhook
-- Host: Your Slack webhook URL
-
-### 3. Set Environment Variables
+### 1. Install Airflow
 
 ```bash
-export DBT_PROJECT_DIR="/opt/dbt/retail-analytics-framework"
-export DBT_PROFILES_DIR="/opt/dbt/.dbt"
+uv pip install apache-airflow
 ```
 
-### 4. Deploy DAGs
-
-Copy DAGs to your Airflow DAGs folder:
+### 2. Initialize Database
 
 ```bash
-cp airflow/dags/*.py $AIRFLOW_HOME/dags/
+airflow db migrate
 ```
 
-## DAG Details
+### 3. Configure DAGs Folder
 
-### dbt_production
-
-Daily full refresh pipeline:
+Edit `~/airflow/airflow.cfg`:
 
 ```
-dbt_deps → dbt_staging → test_staging → dbt_intermediate → dbt_marts → test_marts → dbt_reports → dbt_docs → notify_success
+dags_folder = /path/to/retail-analytics-framework/airflow/dags
+load_examples = False
 ```
 
-- Runs at 6 AM daily
-- Tests after each layer
-- Slack notification on success/failure
-- 2 retries with 5-minute delay
+### 4. Set Environment Variables
 
-### dbt_incremental
-
-Hourly incremental updates:
-
-```
-dbt_incremental → test_incremental
+```bash
+export DBT_PROJECT_DIR="/path/to/retail-analytics-framework"
+export DBT_TARGET="dev"
 ```
 
-- Only runs models with `materialized='incremental'`
-- Processes only new/changed data
-- Lightweight for frequent runs
+### 5. Start Airflow
 
-### dbt_source_freshness
+```bash
+# Terminal 1: API server
+airflow api-server
 
-Source monitoring:
-
-```
-check_freshness → alert_stale
+# Terminal 2: Scheduler
+airflow scheduler
 ```
 
-- Runs every 30 minutes
-- Outputs freshness report to JSON
-- Alerts team via Slack
+### 6. Access UI
 
-## Customization
+Open http://localhost:8080
 
-### Change Schedule
+## Cloud Composer Deployment
 
-Edit `schedule_interval` in DAG definition:
+### 1. Set Environment Variables
+
+In Cloud Composer → Environment Variables:
+
+```
+DBT_PROJECT_DIR = /home/airflow/gcs/dags/dbt
+DBT_TARGET = prod
+```
+
+### 2. Upload DAGs
+
+```bash
+gsutil cp airflow/dags/*.py gs://your-composer-bucket/dags/
+```
+
+### 3. Upload dbt Project
+
+```bash
+gsutil -m cp -r models macros seeds snapshots dbt_project.yml packages.yml gs://your-composer-bucket/dags/dbt/
+```
+
+## DAG Dependencies
+
+```
+dbt_production:
+  dbt_deps → dbt_staging → test_staging → dbt_intermediate → dbt_marts → test_marts → dbt_reports → dbt_docs
+
+dbt_incremental:
+  dbt_incremental → test_incremental
+
+dbt_source_freshness:
+  check_freshness
+```
+
+## Adding Slack Notifications
+
+Install provider:
+
+```bash
+uv pip install apache-airflow-providers-slack
+```
+
+Add to DAG:
 
 ```python
-schedule_interval="0 6 * * *"     # Daily at 6 AM
-schedule_interval="0 * * * *"     # Hourly
-schedule_interval="*/30 * * * *"  # Every 30 minutes
-schedule_interval="0 6 * * 1"     # Weekly Monday 6 AM
-```
+from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
 
-### Add SLA Monitoring
-
-```python
-from airflow.operators.bash import BashOperator
-from datetime import timedelta
-
-dbt_marts = BashOperator(
-    task_id="dbt_marts",
-    bash_command="...",
-    sla=timedelta(hours=1),  # Alert if takes > 1 hour
+notify = SlackWebhookOperator(
+    task_id="notify",
+    slack_webhook_conn_id="slack_webhook",
+    message="dbt run complete",
 )
 ```
 
-### Add Data Quality Checks
+## Troubleshooting
 
-```python
-from airflow.operators.python import BranchPythonOperator
+Local Airflow DAGs can fail due to:
 
-def check_row_counts(**context):
-    # Query BigQuery for row counts
-    # Return 'continue' or 'alert' based on thresholds
-    pass
-
-quality_check = BranchPythonOperator(
-    task_id="quality_check",
-    python_callable=check_row_counts,
-)
-```
-
-## Monitoring
-
-### Airflow UI
-
-Access at `http://localhost:8080` (default)
-
-- View DAG runs
-- Check task logs
-- Monitor SLAs
-- Trigger manual runs
-
-### Troubleshoot
-
-- Local Airflow Dag can fail due to:
-  - Not having dbt profile. Fix: Ensure dbt profile is present
-  - Missing GCP Authentication. Fix: Run  `gcloud auth application-default login`
-  - Missing dbt deps step. Fix: Run dbt deps dag first.  
-
-
-### Slack Alerts
-
-Configure webhook in Airflow connections for:
-- Task failures
-- SLA misses
-- Source freshness warnings
-](https://docs.basedpyright.com/v1.39.3/configuration/config-files/#reportMissingImports)
+| Issue | Fix |
+|-------|-----|
+| Missing dbt profile | Ensure `~/.dbt/profiles.yml` contains `thelook_analytics` profile |
+| Missing GCP auth | Run `gcloud auth application-default login` |
+| Missing dbt packages | Run `dbt_deps` task first or `dbt deps` manually |
+| DAGs not showing | Check `dags_folder` in `~/airflow/airflow.cfg` and run `airflow dags reserialize` |
