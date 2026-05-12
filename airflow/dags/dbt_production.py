@@ -4,15 +4,16 @@ dbt Production DAG
 Runs dbt models on a daily schedule with proper dependency management.
 """
 
+import os
 from datetime import datetime, timedelta
 
 from airflow.operators.bash import BashOperator
 
 from airflow import DAG
 
-# Configuration
-DBT_PROJECT_DIR = "/home/azad/VajraDev/retail-analytics-framework"
-DBT_TARGET = "prod"
+# Configuration - override with environment variables for Cloud Composer
+DBT_PROJECT_DIR = os.getenv("DBT_PROJECT_DIR", "/home/airflow/gcs/dags/dbt")
+DBT_TARGET = os.getenv("DBT_TARGET", "prod")
 
 default_args = {
     "owner": "data-engineering",
