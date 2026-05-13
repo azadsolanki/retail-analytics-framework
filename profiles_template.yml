@@ -1,0 +1,49 @@
+# dbt Profiles Template
+# Copy to ~/.dbt/profiles.yml and update with your GCP project
+
+thelook_analytics:
+  target: dev  # Default target
+
+  outputs:
+    # Development - for local development and feature branches
+    dev:
+      type: bigquery
+      method: oauth  # Use 'service-account' for CI/CD
+      project: data-products-441119
+      dataset: dbt_dev
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      # For service account auth, add:
+      # keyfile: /path/to/keyfile.json
+
+    # QA/Staging - for integration testing before production
+    qa:
+      type: bigquery
+      method: oauth
+      project: data-products-441119
+      dataset: dbt_qa
+      threads: 4
+      timeout_seconds: 300
+      location: US
+
+    # Production - for production data
+    prod:
+      type: bigquery
+      method: oauth
+      project: data-products-441119
+      dataset: dbt_prod
+      threads: 4
+      timeout_seconds: 300
+      location: US
+
+    # CI - for ephemeral PR datasets (used by GitHub Actions)
+    ci:
+      type: bigquery
+      method: service-account
+      project: data-products-441119
+      dataset: "{{ env_var('DBT_DATASET', 'dbt_ci') }}"
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
