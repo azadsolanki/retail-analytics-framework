@@ -2,13 +2,13 @@
 # Copy to ~/.dbt/profiles.yml and update with your GCP project
 
 thelook_analytics:
-  target: dev  # Default target
+  target: dev # Default target
 
   outputs:
     # Development - for local development and feature branches
     dev:
       type: bigquery
-      method: oauth  # Use 'service-account' for CI/CD
+      method: oauth # Use 'service-account' for CI/CD
       project: data-products-441119
       dataset: dbt_dev
       threads: 4
