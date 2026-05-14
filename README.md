@@ -147,8 +147,8 @@ dbt test --select dim_users        # Specific model
 - [x] Semantic Layer (MetricFlow)
 - [x] Model Contracts
 - [x] Auto ERD generation
-- [ ] Airflow DAGs
-- [ ] Multi-environment (dev/staging/prod)
+- [x] Airflow DAGs 
+- [x] Multi-environment (dev/staging/prod)
 - [ ] dbt Mesh for multi-project
 
 ## License
