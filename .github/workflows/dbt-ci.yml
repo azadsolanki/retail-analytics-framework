@@ -93,6 +93,12 @@ jobs:
       - name: Install dbt packages
         run: dbt deps
 
+      - name: Lint SQL with sqlfluff
+        run: |
+          pip install sqlfluff sqlfluff-templater-dbt
+          echo "Linting SQL files..."
+          sqlfluff lint models/ --dialect bigquery --ignore parsing || true
+
       - name: Compile dbt project
         run: dbt compile
 
