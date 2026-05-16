@@ -1,0 +1,27 @@
+# Model Groups - Team Ownership
+# Groups define who owns which models for governance and access control
+
+groups:
+  - name: data_engineering
+    owner:
+      name: Data Engineering Team
+      email: data-engineering@company.com
+    description: |
+      Owns staging and intermediate models.
+      Responsible for data ingestion and transformation.
+
+  - name: analytics_engineering
+    owner:
+      name: Analytics Engineering Team
+      email: analytics-engineering@company.com
+    description: |
+      Owns mart and report models.
+      Responsible for business logic and metrics.
+
+  - name: data_science
+    owner:
+      name: Data Science Team
+      email: data-science@company.com
+    description: |
+      Owns ML feature models and predictions.
+      Responsible for advanced analytics.

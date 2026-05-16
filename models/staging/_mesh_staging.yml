@@ -1,0 +1,54 @@
+# Staging Models - Internal Only
+# Protected access - only available within this project
+
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Staged orders from raw source"
+    access: protected  # Internal only
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_users
+    description: "Staged users from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_products
+    description: "Staged products from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_order_items
+    description: "Staged order line items from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_inventory_items
+    description: "Staged inventory from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_events
+    description: "Staged events from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view
+
+  - name: stg_distribution_centers
+    description: "Staged distribution centers from raw source"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: view

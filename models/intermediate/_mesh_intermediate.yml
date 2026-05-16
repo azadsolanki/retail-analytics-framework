@@ -1,0 +1,22 @@
+# Intermediate Models - Internal Only
+# Protected access - only available within this project
+
+version: 2
+
+models:
+  - name: int_order_items_enriched
+    description: "Enriched order items with product and order details"
+    access: protected
+    group: data_engineering
+    config:
+      materialized: ephemeral
+
+  - name: int_user_order_history
+    description: "User order history aggregations"
+    access: protected
+    group: data_engineering
+
+  - name: int_product_metrics
+    description: "Product performance metrics"
+    access: protected
+    group: data_engineering
