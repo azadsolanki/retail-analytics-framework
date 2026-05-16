@@ -37,6 +37,10 @@ Sources → Staging → Intermediate → Marts → Reports
 | **Slim CI** | Only build modified models | [docs/CI_CD_README.md](docs/CI_CD_README.md) |
 | **Auto ERD** | Generated from relationship tests | [docs/erd.md](docs/erd.md) |
 | **GitHub Pages Docs** | Live dbt documentation | [View Docs](https://azadsolanki.github.io/retail-analytics-framework/) |
+| **Multi-Environment** | dev/qa/prod deployment targets | [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) |
+| **Airflow DAGs** | Production orchestration (+ Cosmos) | [airflow/README.md](airflow/README.md) |
+| **dbt Mesh** | Groups, access control, versioning | [docs/DBT_MESH.md](docs/DBT_MESH.md) |
+| **Pre-commit Hooks** | sqlfluff, yaml lint, formatting | [.pre-commit-config.yaml](.pre-commit-config.yaml) |
 
 ## Quick Start
 
@@ -59,10 +63,12 @@ dbt build
 ## Project Structure
 
 ```
+├── .github/workflows/    # CI/CD pipelines
+├── airflow/              # Airflow DAGs (standard + Cosmos)
 ├── models/
-│   ├── staging/          # Bronze: source cleaning
-│   ├── intermediate/     # Silver: business logic
-│   ├── marts/            # Gold: dimensional models
+│   ├── staging/          # Bronze: source cleaning (protected)
+│   ├── intermediate/     # Silver: business logic (protected)
+│   ├── marts/            # Gold: dimensional models (public)
 │   ├── reports/          # Platinum: aggregations
 │   └── semantic/         # MetricFlow definitions
 ├── tests/                # Custom data tests
@@ -70,12 +76,11 @@ dbt build
 ├── seeds/                # Reference data
 ├── snapshots/            # SCD Type 2
 ├── scripts/              # Dev utilities
-│   ├── dev-setup.sh      # Download prod manifest
-│   ├── slim-build.sh     # Build modified only
-│   └── list-modified.sh  # Show changes
 └── docs/                 # Documentation
     ├── CI_CD_README.md
     ├── MODEL_CONTRACTS.md
+    ├── ENVIRONMENTS.md
+    ├── DBT_MESH.md
     └── erd.md
 ```
 
@@ -135,7 +140,10 @@ dbt test --select dim_users        # Specific model
 |-----|-------------|
 | [CI/CD Guide](docs/CI_CD_README.md) | Pipeline setup, Slim CI |
 | [Model Contracts](docs/MODEL_CONTRACTS.md) | Schema enforcement |
+| [Environments](docs/ENVIRONMENTS.md) | Multi-environment setup |
+| [dbt Mesh](docs/DBT_MESH.md) | Groups, access, versioning |
 | [Semantic Layer](models/semantic/README.md) | MetricFlow usage |
+| [Airflow DAGs](airflow/README.md) | Production orchestration |
 | [ERD](docs/erd.md) | Auto-generated diagram |
 | [Live Docs](https://azadsolanki.github.io/retail-analytics-framework/) | Interactive dbt docs |
 
@@ -147,9 +155,12 @@ dbt test --select dim_users        # Specific model
 - [x] Semantic Layer (MetricFlow)
 - [x] Model Contracts
 - [x] Auto ERD generation
-- [x] Airflow DAGs 
-- [x] Multi-environment (dev/staging/prod)
-- [ ] dbt Mesh for multi-project
+- [x] Airflow DAGs (Standard + Cosmos)
+- [x] Multi-environment (dev/qa/prod)
+- [x] Pre-commit hooks (sqlfluff)
+- [x] dbt Mesh ready (groups, access, versions)
+- [ ] Elementary Dashboard
+- [ ] Full multi-project Mesh
 
 ## License
 
