@@ -63,25 +63,24 @@ dbt build
 ## Project Structure
 
 ```
-├── .github/workflows/    # CI/CD pipelines
-├── airflow/              # Airflow DAGs (standard + Cosmos)
+├── .github/
+│   ├── actions/
+│   │   └── setup-dbt/        # Reusable composite action
+│   └── workflows/            # CI/CD pipelines
+├── airflow/                  # Airflow DAGs (standard + Cosmos)
 ├── models/
-│   ├── staging/          # Bronze: source cleaning (protected)
-│   ├── intermediate/     # Silver: business logic (protected)
-│   ├── marts/            # Gold: dimensional models (public)
-│   ├── reports/          # Platinum: aggregations
-│   └── semantic/         # MetricFlow definitions
-├── tests/                # Custom data tests
-├── macros/               # Reusable SQL
-├── seeds/                # Reference data
-├── snapshots/            # SCD Type 2
-├── scripts/              # Dev utilities
-└── docs/                 # Documentation
-    ├── CI_CD_README.md
-    ├── MODEL_CONTRACTS.md
-    ├── ENVIRONMENTS.md
-    ├── DBT_MESH.md
-    └── erd.md
+│   ├── _groups.yml           # Team ownership (mesh)
+│   ├── staging/              # Bronze: source cleaning (protected)
+│   ├── intermediate/         # Silver: business logic (protected)
+│   ├── marts/                # Gold: dimensional models (public)
+│   ├── reports/              # Platinum: aggregations
+│   └── semantic/             # MetricFlow definitions
+├── tests/                    # Custom data tests
+├── macros/                   # Reusable SQL
+├── seeds/                    # Reference data
+├── snapshots/                # SCD Type 2
+├── scripts/                  # Dev utilities
+└── docs/                     # Documentation
 ```
 
 ## CI/CD Pipeline
@@ -161,6 +160,9 @@ dbt test --select dim_users        # Specific model
 - [x] dbt Mesh ready (groups, access, versions)
 - [ ] Elementary Dashboard
 - [ ] Full multi-project Mesh
+- [ ] MCP Server integration
+- [ ] Agentic dbt workflows (AI-assisted development)
+
 
 ## License
 
