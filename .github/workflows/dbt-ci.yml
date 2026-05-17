@@ -10,16 +10,16 @@
 #   - Merge to main: compile -> full build (prod) -> save manifest -> ERD
 #   - Manual:        deploy to QA or Prod on demand
 
+# dbt CI/CD Pipeline
+# Uses composite action to reduce repetition
+
 name: dbt CI
 
 on:
   push:
-    branches:
-      - main
-      - "feature/**"
+    branches: [main, "feature/**"]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -27,9 +27,7 @@ on:
         required: true
         default: "qa"
         type: choice
-        options:
-          - qa
-          - prod
+        options: [qa, prod]
       models:
         description: "Model selector (leave empty for all)"
         required: false
@@ -47,172 +45,74 @@ jobs:
   compile:
     name: Compile
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup dbt
+        uses: ./.github/actions/setup-dbt
         with:
-          python-version: "3.11"
-          cache: "pip"
+          gcp_credentials: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          target: ci
+          dataset: dbt_ci
+          project: ${{ env.DBT_PROJECT }}
+          profile: ${{ env.DBT_PROFILE }}
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Create keyfile for dbt
-        run: |
-          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-          chmod 600 /tmp/gcp-key.json
-
-      - name: Create profiles.yml
-        run: |
-          cat << EOF > profiles.yml
-          ${{ env.DBT_PROFILE }}:
-            target: ci
-            outputs:
-              ci:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: dbt_ci
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-          EOF
-
-      - name: Install dbt packages
-        run: dbt deps
-
-      - name: Lint SQL with sqlfluff
+      - name: Lint SQL
         run: |
           pip install sqlfluff sqlfluff-templater-dbt
-          echo "Linting SQL files..."
           sqlfluff lint models/ --dialect bigquery --ignore parsing || true
 
-      - name: Compile dbt project
+      - name: Compile
         run: dbt compile
 
       - name: Validate Airflow DAGs
-        run: |
-          echo "Validating Airflow DAG syntax..."
-          python -m py_compile airflow/dags/*.py
-          echo "All DAGs valid"
+        run: python -m py_compile airflow/dags/*.py
 
   build:
     name: Build & Test
     runs-on: ubuntu-latest
     needs: compile
     if: github.event_name != 'workflow_dispatch'
-
     env:
       DBT_DATASET: ${{ github.event_name == 'pull_request' && format('dbt_ci_pr_{0}', github.event.pull_request.number) || 'dbt_prod' }}
       DBT_TARGET: ${{ github.event_name == 'pull_request' && 'ci' || 'prod' }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup dbt
+        uses: ./.github/actions/setup-dbt
         with:
-          python-version: "3.11"
-          cache: "pip"
+          gcp_credentials: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          target: ${{ env.DBT_TARGET }}
+          dataset: ${{ env.DBT_DATASET }}
+          project: ${{ env.DBT_PROJECT }}
+          profile: ${{ env.DBT_PROFILE }}
+          setup_gcloud: "true"
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Create keyfile for dbt
-        run: |
-          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-          chmod 600 /tmp/gcp-key.json
-
-      - name: Create profiles.yml
-        run: |
-          cat << EOF > profiles.yml
-          ${{ env.DBT_PROFILE }}:
-            target: ${{ env.DBT_TARGET }}
-            outputs:
-              ci:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: ${{ env.DBT_DATASET }}
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-              prod:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: dbt_prod
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-          EOF
-
-      - name: Show CI configuration
-        run: |
-          echo "Event: ${{ github.event_name }}"
-          echo "Target: ${{ env.DBT_TARGET }}"
-          echo "Dataset: ${{ env.DBT_DATASET }}"
-
-      - name: Install dbt packages
-        run: dbt deps
-
-      - name: Download production manifest from GCS
-        id: download_manifest
+      - name: Download manifest (Slim CI)
+        id: manifest
         if: github.event_name == 'pull_request'
         run: |
           mkdir -p ./prod-manifest
           if gsutil cp ${{ env.GCS_MANIFEST_BUCKET }}/prod/manifest.json ./prod-manifest/manifest.json 2>/dev/null; then
-            echo "Production manifest downloaded"
             echo "manifest_exists=true" >> $GITHUB_OUTPUT
           else
-            echo "No production manifest found"
             echo "manifest_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build modified models only (Slim CI)
-        if: github.event_name == 'pull_request' && steps.download_manifest.outputs.manifest_exists == 'true'
-        run: |
-          echo "Running Slim CI"
-          dbt ls --select +state:modified+ --state ./prod-manifest || echo "No modified models"
-          dbt build --select +state:modified+ --state ./prod-manifest --exclude snap_products
+      - name: Build (Slim CI)
+        if: github.event_name == 'pull_request' && steps.manifest.outputs.manifest_exists == 'true'
+        run: dbt build --select +state:modified+ --state ./prod-manifest --exclude snap_products
 
-      - name: Build all models (Full)
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && steps.download_manifest.outputs.manifest_exists != 'true')
-        run: |
-          echo "Running full build against ${{ env.DBT_TARGET }}"
-          dbt build --exclude snap_products
+      - name: Build (Full)
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && steps.manifest.outputs.manifest_exists != 'true')
+        run: dbt build --exclude snap_products
 
-      - name: Upload manifest to GCS
+      - name: Upload manifest
         if: github.ref == 'refs/heads/main'
         run: |
           gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/manifest.json
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/backups/manifest_${TIMESTAMP}.json
+          gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/backups/manifest_$(date +%Y%m%d_%H%M%S).json
 
       - name: Cleanup CI dataset
         if: always() && github.event_name == 'pull_request'
@@ -224,233 +124,71 @@ jobs:
     needs: compile
     if: github.event_name == 'workflow_dispatch'
     environment: ${{ github.event.inputs.environment }}
-
     env:
       DBT_DATASET: ${{ github.event.inputs.environment == 'prod' && 'dbt_prod' || 'dbt_qa' }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup dbt
+        uses: ./.github/actions/setup-dbt
         with:
-          python-version: "3.11"
-          cache: "pip"
+          gcp_credentials: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          target: ${{ github.event.inputs.environment }}
+          dataset: ${{ env.DBT_DATASET }}
+          project: ${{ env.DBT_PROJECT }}
+          profile: ${{ env.DBT_PROFILE }}
+          setup_gcloud: "true"
 
-      - name: Install dependencies
+      - name: Deploy
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Create keyfile for dbt
-        run: |
-          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-          chmod 600 /tmp/gcp-key.json
-
-      - name: Create profiles.yml
-        run: |
-          cat << EOF > profiles.yml
-          ${{ env.DBT_PROFILE }}:
-            target: ${{ github.event.inputs.environment }}
-            outputs:
-              qa:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: dbt_qa
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-              prod:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: dbt_prod
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-          EOF
-
-      - name: Install dbt packages
-        run: dbt deps
-
-      - name: Deploy to ${{ github.event.inputs.environment }}
-        run: |
-          echo "Deploying to ${{ github.event.inputs.environment }}"
           if [ -n "${{ github.event.inputs.models }}" ]; then
             dbt build --select ${{ github.event.inputs.models }} --exclude snap_products
           else
             dbt build --exclude snap_products
           fi
 
-      - name: Generate docs
-        run: dbt docs generate
-
-      - name: Upload manifest to GCS
+      - name: Upload manifest
         if: github.event.inputs.environment == 'prod'
         run: |
           gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/manifest.json
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/backups/manifest_${TIMESTAMP}.json
+          gsutil cp target/manifest.json ${{ env.GCS_MANIFEST_BUCKET }}/prod/backups/manifest_$(date +%Y%m%d_%H%M%S).json
 
   erd:
     name: Generate ERD
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup dbt
+        uses: ./.github/actions/setup-dbt
         with:
-          python-version: "3.11"
-          cache: "pip"
+          gcp_credentials: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          target: prod
+          dataset: dbt_prod
+          project: ${{ env.DBT_PROJECT }}
+          profile: ${{ env.DBT_PROFILE }}
 
-      - name: Install dependencies
+      - name: Generate docs and ERD
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Create keyfile for dbt
-        run: |
-          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-          chmod 600 /tmp/gcp-key.json
-
-      - name: Create profiles.yml
-        run: |
-          cat << EOF > profiles.yml
-          ${{ env.DBT_PROFILE }}:
-            target: prod
-            outputs:
-              prod:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: dbt_prod
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-          EOF
-
-      - name: Install dbt packages
-        run: dbt deps
-
-      - name: Generate dbt docs
-        run: dbt docs generate
-
-      - name: Install dbterd
-        run: pip install dbterd
-
-      - name: Generate ERD
-        run: |
+          dbt docs generate
+          pip install dbterd
           mkdir -p docs
           dbterd run -ad target -o docs -t mermaid \
             -s "model.digital_marketing.dim_" \
             -s "model.digital_marketing.fct_" \
             -s "model.digital_marketing.rpt_" \
             --exclude "model.elementary"
-
-          echo '# Data Model ERD' > docs/erd.md
-          echo '' >> docs/erd.md
-          echo 'Auto-generated from dbt relationship tests.' >> docs/erd.md
-          echo '' >> docs/erd.md
-          echo '```mermaid' >> docs/erd.md
+          echo -e "# Data Model ERD\n\nAuto-generated from dbt relationship tests.\n\n\`\`\`mermaid" > docs/erd.md
           cat docs/output.md >> docs/erd.md
           echo '```' >> docs/erd.md
           rm docs/output.md
 
-      - name: Commit ERD to repo
+      - name: Commit ERD
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add docs/erd.md
-          git commit -m "Update ERD diagram [skip ci]" || echo "No changes"
+          git commit -m "Update ERD [skip ci]" || true
           git push
-
-  docs:
-    name: Generate Docs
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'pull_request'
-    continue-on-error: true
-
-    env:
-      DBT_DATASET: ${{ format('dbt_ci_pr_{0}', github.event.pull_request.number) }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Create keyfile for dbt
-        run: |
-          printf '%s' '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
-          chmod 600 /tmp/gcp-key.json
-
-      - name: Create profiles.yml
-        run: |
-          cat << EOF > profiles.yml
-          ${{ env.DBT_PROFILE }}:
-            target: ci
-            outputs:
-              ci:
-                type: bigquery
-                method: service-account
-                project: ${{ env.DBT_PROJECT }}
-                dataset: ${{ env.DBT_DATASET }}
-                threads: 4
-                timeout_seconds: 300
-                location: US
-                keyfile: /tmp/gcp-key.json
-          EOF
-
-      - name: Install dbt packages
-        run: dbt deps
-
-      - name: Generate dbt docs
-        run: dbt docs generate
-
-      - name: Upload docs artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dbt-docs
-          path: |
-            target/index.html
-            target/manifest.json
-            target/catalog.json
-          retention-days: 14

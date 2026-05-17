@@ -1,0 +1,94 @@
+name: 'Setup dbt'
+description: 'Setup Python, dbt, GCP auth, and profiles'
+
+inputs:
+  gcp_credentials:
+    description: 'GCP service account key JSON'
+    required: true
+  target:
+    description: 'dbt target (ci, qa, prod)'
+    required: true
+    default: 'ci'
+  dataset:
+    description: 'BigQuery dataset name'
+    required: true
+  project:
+    description: 'GCP project ID'
+    required: true
+  profile:
+    description: 'dbt profile name'
+    required: true
+  setup_gcloud:
+    description: 'Whether to setup gcloud CLI'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: Setup gcloud CLI
+      if: inputs.setup_gcloud == 'true'
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Create keyfile for dbt
+      shell: bash
+      run: |
+        printf '%s' '${{ inputs.gcp_credentials }}' > /tmp/gcp-key.json
+        chmod 600 /tmp/gcp-key.json
+
+    - name: Create profiles.yml
+      shell: bash
+      run: |
+        cat << EOF > profiles.yml
+        ${{ inputs.profile }}:
+          target: ${{ inputs.target }}
+          outputs:
+            ci:
+              type: bigquery
+              method: service-account
+              project: ${{ inputs.project }}
+              dataset: ${{ inputs.dataset }}
+              threads: 4
+              timeout_seconds: 300
+              location: US
+              keyfile: /tmp/gcp-key.json
+            qa:
+              type: bigquery
+              method: service-account
+              project: ${{ inputs.project }}
+              dataset: dbt_qa
+              threads: 4
+              timeout_seconds: 300
+              location: US
+              keyfile: /tmp/gcp-key.json
+            prod:
+              type: bigquery
+              method: service-account
+              project: ${{ inputs.project }}
+              dataset: dbt_prod
+              threads: 4
+              timeout_seconds: 300
+              location: US
+              keyfile: /tmp/gcp-key.json
+        EOF
+
+    - name: Install dbt packages
+      shell: bash
+      run: dbt deps
