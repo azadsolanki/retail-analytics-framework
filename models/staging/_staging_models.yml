@@ -5,6 +5,8 @@ models:
     description: "User staging model"
     access: protected
     group: data_engineering
+    config:
+      tags: ["daily", "tier2", "marketing"]
     columns:
       - name: user_id
         description: "Unique customer identifier"
@@ -29,6 +31,8 @@ models:
     description: "Cleaned order header data with calculated fields"
     access: protected
     group: data_engineering
+    config:
+      tags: ["daily", "tier1", "finance"]
     columns:
       - name: order_id
         description: "Unique order identifier"
@@ -54,6 +58,8 @@ models:
     description: "Order line items with product references"
     access: protected
     group: data_engineering
+    config:
+      tags: ["daily", "tier1", "finance"]
     columns:
       - name: order_item_id
         description: "Unique line item identifier"
@@ -73,6 +79,8 @@ models:
     description: "Product catalog with calculated margins"
     access: protected
     group: data_engineering
+    config:
+      tags: ["daily", "tier2", "product"]
     columns:
       - name: product_id
         description: "Unique product identifier"
