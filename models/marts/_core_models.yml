@@ -8,6 +8,8 @@ models:
     latest_version: 1
     versions:
       - v: 1
+    config:
+      tags: ["daily", "tier1", "marketing"]
     columns:
       - name: user_id
         description: "Unique customer identifier"
@@ -32,6 +34,8 @@ models:
     latest_version: 1
     versions:
       - v: 1
+    config:
+      tags: ["daily", "tier1", "product"]
     columns:
       - name: product_id
         description: "Unique product identifier"
@@ -50,6 +54,8 @@ models:
     latest_version: 1
     versions:
       - v: 1
+    config:
+      tags: ["daily", "tier1", "finance"]
     columns:
       - name: order_id
         description: "Unique order identifier"
@@ -73,6 +79,8 @@ models:
     latest_version: 1
     versions:
       - v: 1
+    config:
+      tags: ["daily", "tier1", "finance"]
     columns:
       - name: revenue_date
         description: "Date of revenue"
@@ -84,6 +92,8 @@ models:
     description: "Product performance report"
     access: public
     group: analytics_engineering
+    config:
+      tags: ["daily", "tier2", "product"]
     columns:
       - name: product_id
         description: "Product reference"
@@ -99,6 +109,8 @@ models:
     description: "Customer cohort analysis"
     access: public
     group: analytics_engineering
+    config:
+      tags: ["weekly", "tier2", "marketing"]
     columns:
       - name: cohort_month
         description: "Cohort month"
@@ -109,6 +121,8 @@ models:
     description: "Executive dashboard metrics"
     access: public
     group: analytics_engineering
+    config:
+      tags: ["daily", "tier1", "finance"]
     columns:
       - name: metric_month
         description: "Metric month"
