@@ -1,0 +1,132 @@
+version: 2
+
+exposures:
+  # ============================================================
+  # Executive Dashboards
+  # ============================================================
+  - name: executive_dashboard
+    type: dashboard
+    maturity: high
+    description: "C-suite daily performance dashboard showing revenue, orders, and customer metrics"
+    owner:
+      name: Finance Team
+      email: finance@company.com
+    depends_on:
+      - ref('fct_daily_revenue')
+      - ref('fct_orders')
+      - ref('dim_users')
+    url: https://lookerstudio.google.com/reporting/executive-dashboard
+    tags: ["finance", "tier1"]
+
+  - name: weekly_business_review
+    type: dashboard
+    maturity: high
+    description: "Weekly leadership review deck with KPIs and trends"
+    owner:
+      name: Finance Team
+      email: finance@company.com
+    depends_on:
+      - ref('fct_daily_revenue')
+      - ref('rpt_executive_dashboard')
+    url: https://lookerstudio.google.com/reporting/weekly-review
+    tags: ["finance", "tier1"]
+
+  # ============================================================
+  # Marketing Dashboards
+  # ============================================================
+  - name: customer_segmentation_dashboard
+    type: dashboard
+    maturity: medium
+    description: "Customer segments, RFM analysis, and lifetime value tracking"
+    owner:
+      name: Marketing Team
+      email: marketing@company.com
+    depends_on:
+      - ref('dim_users')
+      - ref('rpt_customer_cohorts')
+    url: https://lookerstudio.google.com/reporting/customer-segments
+    tags: ["marketing", "tier2"]
+
+  - name: cohort_analysis
+    type: dashboard
+    maturity: medium
+    description: "Customer cohort retention and revenue analysis"
+    owner:
+      name: Marketing Team
+      email: marketing@company.com
+    depends_on:
+      - ref('rpt_customer_cohorts')
+      - ref('dim_users')
+    url: https://lookerstudio.google.com/reporting/cohorts
+    tags: ["marketing", "tier2"]
+
+  # ============================================================
+  # Product Dashboards
+  # ============================================================
+  - name: product_performance_dashboard
+    type: dashboard
+    maturity: high
+    description: "Product sales, margins, and inventory performance"
+    owner:
+      name: Product Team
+      email: product@company.com
+    depends_on:
+      - ref('dim_products')
+      - ref('rpt_product_performance')
+    url: https://lookerstudio.google.com/reporting/product-performance
+    tags: ["product", "tier1"]
+
+  # ============================================================
+  # ML Models
+  # ============================================================
+  - name: churn_prediction_model
+    type: ml
+    maturity: medium
+    description: "Customer churn prediction model using RFM features"
+    owner:
+      name: Data Science Team
+      email: data-science@company.com
+    depends_on:
+      - ref('dim_users')
+      - ref('fct_orders')
+    url: https://console.cloud.google.com/vertex-ai/models/churn-prediction
+    tags: ["data_science", "tier2"]
+
+  - name: demand_forecasting_model
+    type: ml
+    maturity: low
+    description: "Product demand forecasting for inventory planning"
+    owner:
+      name: Data Science Team
+      email: data-science@company.com
+    depends_on:
+      - ref('dim_products')
+      - ref('fct_orders')
+    url: https://console.cloud.google.com/vertex-ai/models/demand-forecast
+    tags: ["data_science", "tier3"]
+
+  # ============================================================
+  # Reports & Exports
+  # ============================================================
+  - name: monthly_finance_report
+    type: application
+    maturity: high
+    description: "Automated monthly finance report sent to stakeholders"
+    owner:
+      name: Finance Team
+      email: finance@company.com
+    depends_on:
+      - ref('fct_daily_revenue')
+      - ref('fct_orders')
+    tags: ["finance", "tier1"]
+
+  - name: marketing_email_sync
+    type: application
+    maturity: medium
+    description: "Customer segments synced to email marketing platform"
+    owner:
+      name: Marketing Team
+      email: marketing@company.com
+    depends_on:
+      - ref('dim_users')
+    tags: ["marketing", "tier2"]

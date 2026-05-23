@@ -41,6 +41,8 @@ Sources → Staging → Intermediate → Marts → Reports
 | **Airflow DAGs** | Production orchestration (+ Cosmos) | [airflow/README.md](airflow/README.md) |
 | **dbt Mesh** | Groups, access control, versioning | [docs/DBT_MESH.md](docs/DBT_MESH.md) |
 | **Pre-commit Hooks** | sqlfluff, yaml lint, formatting | [.pre-commit-config.yaml](.pre-commit-config.yaml) |
+| **Tagging Strategy** | Frequency, priority, domain tags | [docs/TAGGING_STRATEGY.md](docs/TAGGING_STRATEGY.md) |
+| **Exposures** | Downstream dependencies (dashboards, ML) | [models/_exposures.yml](models/_exposures.yml) |
 
 ## Quick Start
 
@@ -141,6 +143,7 @@ dbt test --select dim_users        # Specific model
 | [Model Contracts](docs/MODEL_CONTRACTS.md) | Schema enforcement |
 | [Environments](docs/ENVIRONMENTS.md) | Multi-environment setup |
 | [dbt Mesh](docs/DBT_MESH.md) | Groups, access, versioning |
+| [Tagging Strategy](docs/TAGGING_STRATEGY.md) | Model tags for scheduling and filtering |
 | [Semantic Layer](models/semantic/README.md) | MetricFlow usage |
 | [Airflow DAGs](airflow/README.md) | Production orchestration |
 | [ERD](docs/erd.md) | Auto-generated diagram |
@@ -158,11 +161,12 @@ dbt test --select dim_users        # Specific model
 - [x] Multi-environment (dev/qa/prod)
 - [x] Pre-commit hooks (sqlfluff)
 - [x] dbt Mesh ready (groups, access, versions)
+- [x] Tagging strategy
+- [x] Exposures (dashboards, ML models)
 - [ ] Elementary Dashboard
 - [ ] Full multi-project Mesh
 - [ ] MCP Server integration
 - [ ] Agentic dbt workflows (AI-assisted development)
-
 
 ## License
 
